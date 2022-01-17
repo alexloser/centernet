@@ -10,14 +10,14 @@ from bitcv import letterbox_embed, correct_box_o2l
 from pymagic import logW, logI
 
 
-def decode_label(label, max_boxes, heatmap_shape, downsampling_ratio):
+def decode_label(label, max_boxes, heatmap_shape, downsample_ratio):
     hm = np.zeros(shape=heatmap_shape, dtype=np.float32)
     off = np.zeros(shape=(max_boxes, 2), dtype=np.float32)
     wh = np.zeros(shape=(max_boxes, 2), dtype=np.float32)
     mask = np.zeros(shape=max_boxes, dtype=np.float32)
     idx = np.zeros(shape=max_boxes, dtype=np.float32)
     for j, item in enumerate(label):
-        item[:4] = item[:4] / downsampling_ratio
+        item[:4] = item[:4] / downsample_ratio
         xmin, ymin, xmax, ymax, category = item
         category = int(category)
         h, w = int(ymax - ymin), int(xmax - xmin)
@@ -55,15 +55,15 @@ class DataHolder:
                  num_classes,
                  batch_size,
                  max_boxes,
-                 downsampling_ratio, 
+                 downsample_ratio, 
                  channle_means=[]):
 
         self.batch_size = batch_size
         self.input_size = input_size
         self.num_classes = num_classes
-        # downsampling_ratio is input_size / feature_size, 
+        # downsample_ratio is input_size / feature_size, 
         # see last deconv layer's ouput to ensure feature_size!
-        self.dsr = downsampling_ratio
+        self.dsr = downsample_ratio
         self.max_boxes = max_boxes
         self.hmap_size = self.input_size // self.dsr
         self.channel_means = channle_means
@@ -104,8 +104,17 @@ class DataHolder:
             self._sizes[i] = wh
             self._masks[i] = mask
             self._indices[i] = idx
+        rss = psutil.Process(os.getpid()).memory_info().rss / (1024**3)
+        logI(F"{i} images loaded, {round(rss, 2)}GB memory used")
 
-    def generate(self):
+    def generate_one(self):
+        rand_orders = np.random.permutation(self._x_train.shape[0])
+        for i in range(len(rand_orders)):
+            x = self._x_train[i]
+            y = self._hmaps[i], self._offsets[i], self._sizes[i], self._masks[i], self._indices[i]
+            yield x, y
+
+    def generate_batch(self):
         rand_orders = np.random.permutation(self._x_train.shape[0])
         for i in range(self.num_batches):
             ids = rand_orders[i * self.batch_size:(i + 1) * self.batch_size]

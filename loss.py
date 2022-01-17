@@ -61,3 +61,7 @@ class CombineLoss:
         total_loss = self.hmap_weight * hmap_loss + self.off_weight * offset_loss + self.size_weight * size_loss
 
         return hmap_loss, offset_loss, size_loss, total_loss
+
+
+
+
