@@ -16,7 +16,7 @@ def train_one_batch(model, x, y, optimizer, loss_func):
         pred = model(x, training=True)
         hmap_loss, offset_loss, size_loss, total_loss = loss_func(y_pred=pred, y_true=y)
         model_loss = tf.reduce_sum(model.losses)
-        total_loss += model_loss
+        total_loss += 0.1 * model_loss
     grad = tape.gradient(target=total_loss, sources=model.trainable_variables)
     optimizer.apply_gradients(grads_and_vars=zip(grad, model.trainable_variables))
     return hmap_loss, offset_loss, size_loss, total_loss
@@ -39,7 +39,6 @@ class CenterNetTrainer:
         self.batch_size = config.batch_size
         self.input_size = config.input_size
         self.num_classes = config.num_classes
-        self.downsample_ratio = config.downsample_ratio
         self.loss_func = CombineLoss(config.num_classes,
                                      hmap_weight=config.hmap_loss_weight,
                                      off_weight=config.offset_loss_weight,
@@ -59,8 +58,6 @@ class CenterNetTrainer:
         return gen_train, gen_valid
 
     def run(self, max_epoches, dataholder_train, dataholder_valid, save_model_dir, save_name_prefix):
-        logI("heatmap size:", self.input_size // self.downsample_ratio)
-
         for epoch in range(1, max_epoches + 1):
             mean_hmap_loss = keras.metrics.Mean()
             mean_offset_loss = keras.metrics.Mean()
@@ -137,16 +134,14 @@ def train_centernet(conf, pretrained):
                                   input_size=conf.input_size,
                                   num_classes=conf.num_classes,
                                   batch_size=conf.batch_size,
-                                  max_boxes=conf.max_boxes,
-                                  downsample_ratio=conf.downsample_ratio)
+                                  max_boxes=conf.max_boxes)
     dataholder_train.init()
 
     dataholder_valid = DataHolder(train_list_files=conf.valid_list_files,
                                   input_size=conf.input_size,
                                   num_classes=conf.num_classes,
                                   batch_size=conf.batch_size,
-                                  max_boxes=conf.max_boxes,
-                                  downsample_ratio=conf.downsample_ratio)
+                                  max_boxes=conf.max_boxes)
     dataholder_valid.init()
 
     rss = psutil.Process(os.getpid()).memory_info().rss / (1024**3)

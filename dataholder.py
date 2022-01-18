@@ -55,15 +55,13 @@ class DataHolder:
                  num_classes,
                  batch_size,
                  max_boxes,
-                 downsample_ratio, 
                  channle_means=[]):
 
         self.batch_size = batch_size
         self.input_size = input_size
         self.num_classes = num_classes
-        # downsample_ratio is input_size / feature_size, 
-        # see last deconv layer's ouput to ensure feature_size!
-        self.dsr = downsample_ratio
+        # downsample_ratio is input_size / hmap_size
+        self.dsr = 4
         self.max_boxes = max_boxes
         self.hmap_size = self.input_size // self.dsr
         self.channel_means = channle_means
@@ -109,7 +107,7 @@ class DataHolder:
 
     def generate_one(self):
         rand_orders = np.random.permutation(self._x_train.shape[0])
-        for i in range(len(rand_orders)):
+        for i in rand_orders:
             x = self._x_train[i]
             y = self._hmaps[i], self._offsets[i], self._sizes[i], self._masks[i], self._indices[i]
             yield x, y

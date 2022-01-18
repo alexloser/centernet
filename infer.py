@@ -61,12 +61,10 @@ class CenterNetDecoder:
     def __init__(self,
                  input_shape,
                  max_boxes,
-                 downsample_ratio,
                  score_threshold,
                  nms_threshold=0):
         self.K = max_boxes
         self.input_shape = np.array(input_shape, dtype=np.float32)[:2]
-        self.dsr = downsample_ratio
         self.score_threshold = score_threshold
         self.nms_threshold = nms_threshold
 
@@ -76,6 +74,11 @@ class CenterNetDecoder:
         hmap, off, size = tf.split(value=pred, num_or_size_splits=[num_classes, 2, 2], axis=-1)
         hmap = tf.math.sigmoid(hmap)
         batch_size = hmap.shape[0]
+        ####################################################################
+        # downsample_ratio is 4
+        self.dsr = self.input_shape[1] // hamp.shape[1] 
+        assert self.dsr == 4
+        ####################################################################
         hmap = pool_nms(hmap)
         scores, inds, clses, ys, xs = self.topK(scores=hmap)
 
@@ -146,7 +149,6 @@ class CenterNetInfer:
             self.input_tendor_id = int(self.model.get_input_details()[0]["index"])
         self.decode = CenterNetDecoder(input_shape=self.param.input_shape,
                                        max_boxes=self.param.max_boxes,
-                                       downsample_ratio=self.param.downsample_ratio,
                                        score_threshold=self.param.score_threshold,
                                        nms_threshold=self.param.nms_threshold)
 
