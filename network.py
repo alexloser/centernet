@@ -23,7 +23,7 @@ def backbone_factory(name: str,
     if isinstance(input_shape, int):
         input_shape = (input_shape, input_shape, 3)
     if name == "csp_darknet53_tiny":
-        return csp_darknet53_tiny(input_shape, batch_size)
+        return csp_darknet53_tiny(input_shape, batch_size, **kwargs)
     if name == "resnet_xt":
         return create_resnet_xt(input_shape, batch_size=batch_size, num_classes=0, **kwargs)
     if name == "densenet":
@@ -47,9 +47,7 @@ def backbone_factory(name: str,
 def create_centernet(backbone: keras.Model,
                      input_shape: Union[list, tuple],
                      num_classes: int,
-                     deconv_layers: int = 3,
-                     deconv_filters: Union[list, tuple, int] = [128, 128, 128],
-                     deconv_kernels: Union[list, tuple, int] = [4, 4, 4],
+                     deconv_filters: list = [128, 128, 128],
                      head_channels: int = 64,
                      batch_size: int = None,
                      act_type: str = "swish") -> keras.Model:
@@ -57,15 +55,13 @@ def create_centernet(backbone: keras.Model,
     x = backbone(inputs)
 
     if isinstance(deconv_filters, int):
-        deconv_filters = [deconv_filters] * deconv_layers
-    if isinstance(deconv_kernels, int):
-        deconv_kernels = [deconv_kernels] * deconv_layers
+        deconv_filters = [deconv_filters] * 3
 
     upsamples = LayerBlock()
-    for i in range(deconv_layers):
+    for i in range(3):
         upsamples.layers.extend([
             keras.layers.Conv2DTranspose(filters=deconv_filters[i],
-                                         kernel_size=deconv_kernels[i],
+                                         kernel_size=4,
                                          strides=2,
                                          padding="same",
                                          kernel_initializer=keras.initializers.he_normal(),

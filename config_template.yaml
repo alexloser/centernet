@@ -1,0 +1,48 @@
+# coding: utf-8
+
+category:
+  vehicles : 0
+  person : 1
+
+num_classes: 2
+
+train_list_files: [
+  D:/VOC/train_list_2007_2012_B2.txt
+  #D:/VOC/train_list_2007_2012_B2.augment.txt
+]
+valid_list_files: [
+  D:/VOC/valid_list_2007_2012_B2.txt
+]
+
+save_model_dir: D:/Models/VOC_B2
+
+input_size: 512
+input_shape: [512, 512, 3]
+channel_means: []
+batch_size: 8
+max_epoches: 99
+
+backbone: csp_darknet53_tiny
+backbone_args:
+  active: leaky
+act_type: leaky
+max_boxes: 16
+downsample_ratio: 4  # input_size / heatmap_size
+head_channels: 64
+# deconv_filters: [128, 128, 128]
+deconv_filters: [256, 128, 64]
+
+optimizer: 
+  name: LazyAdam
+  learning_rate: 2.0e-5
+  # weight_decay: 1.0e-6
+  clipnorm: 2.0
+
+score_threshold: 0.25
+nms_threshold: 0.3
+
+# combine loss weights
+hmap_loss_weight: 1.0
+size_loss_weight: 0.1
+offset_loss_weight: 0.9
+

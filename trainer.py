@@ -34,6 +34,7 @@ class CenterNetTrainer:
         self.model = model
         if pretrained and is_file(pretrained):
             load_weights_from(self.model, pretrained)
+        self.model.compile(optimizer)
         self.optimizer = optimizer
         self.batch_size = config.batch_size
         self.input_size = config.input_size
@@ -122,9 +123,7 @@ def train_centernet(conf, pretrained):
     model = create_centernet(backbone=backbone,
                              input_shape=conf.input_shape,
                              num_classes=conf.num_classes,
-                             deconv_layers=conf.deconv_layers,
                              deconv_filters=conf.deconv_filters,
-                             deconv_kernels=conf.deconv_kernels,
                              head_channels=conf.head_channels,
                              act_type=conf.act_type)
 
