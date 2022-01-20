@@ -58,11 +58,7 @@ def non_max_suppression(detections, threhold):
 
 
 class CenterNetDecoder:
-    def __init__(self,
-                 input_shape,
-                 max_boxes,
-                 score_threshold,
-                 nms_threshold=0):
+    def __init__(self, input_shape, max_boxes, score_threshold, nms_threshold=0):
         self.K = max_boxes
         self.input_shape = np.array(input_shape, dtype=np.float32)[:2]
         self.score_threshold = score_threshold
@@ -76,7 +72,7 @@ class CenterNetDecoder:
         batch_size = hmap.shape[0]
         ####################################################################
         # downsample_ratio is 4
-        self.dsr = self.input_shape[1] // hamp.shape[1] 
+        self.dsr = self.input_shape[1] // hmap.shape[1] 
         assert self.dsr == 4
         ####################################################################
         hmap = pool_nms(hmap)
@@ -169,25 +165,17 @@ class CenterNetInfer:
         return normalize_l1(x, maxval=255.0, minval=0.0, local=True)
 
     def _inference(self, image):
-        elapsed = []
         timer = Timer()
         x = self.preprocess(image)
-        elapsed.append(timer.seconds())
-        timer.reset()
         if isinstance(self.model, tf.lite.Interpreter):
             self.model.set_tensor(self.input_tendor_id, x)
             self.model.invoke()
             pred = self.model.get_tensor(self.output_tendor_id)
         else:
             pred = self.model.predict(x, batch_size=1)
-        elapsed.append(timer.seconds())
-        timer.reset()
         detections = self.decode(image, pred)
-        elapsed.append(timer.seconds())
-        timer.reset()
         detections = non_max_suppression(detections, self.param.nms_threshold)
-        elapsed.append(timer.seconds())
-        logI("Elapsed Pre=%.3f Inf=%.3f Dec=%.3f NMS=%.3f" % (elapsed[0], elapsed[1], elapsed[2], elapsed[3]))
+        logI("Elapsed: %.4f" % timer.seconds())
         return detections
 
     def inference(self, path, image=None):
@@ -225,3 +213,5 @@ class CenterNetInfer:
             Box(int(box[0]), int(box[1]), int(box[2]), int(box[3])).draw(labeled, (0, 0, 255), 2)
             put_text(labeled, info, (int(box[0]) + 1, int(box[3]) - 2), (0, 255, 0), 1, fontscale)
         return labeled
+
+

@@ -6,7 +6,7 @@ from collections import defaultdict
 from cnnkit.preprocess import sub_means, normalize_l1
 from centernet.gauss import gaussian_radius, create_gauss_heatmap
 from bitcv import Box, show_image, read_image, flip2
-from bitcv import letterbox_embed, correct_box_o2l
+from bitcv import letterbox_embed, correct_box_o2l, gray2color
 from pymagic import logW, logI
 
 
@@ -82,21 +82,22 @@ class DataHolder:
             for label in regex.findall(line):
                 counter[label] += 1
         logI("Labels:", dict(counter))
+        self._x = None
 
-    def init(self):
+    def cache(self):
         n = len(self.annotations)
         self._hmaps = np.zeros((n, self.hmap_size, self.hmap_size, self.num_classes), np.float32)
         self._offsets = np.zeros((n, self.max_boxes, 2), np.float32)
         self._sizes = np.zeros((n, self.max_boxes, 2), np.float32)
         self._masks = np.zeros((n, self.max_boxes), np.float32)
         self._indices = np.zeros((n, self.max_boxes), np.float32)
-        self._x_train = np.zeros((n, self.input_size, self.input_size, 3), np.float32)
+        self._x = np.zeros((n, self.input_size, self.input_size, 3), np.float32)
         for i, line in enumerate(self.annotations):
             if i and (i % 100 == 0):
                 rss = psutil.Process(os.getpid()).memory_info().rss / (1024**3)
                 logI(F"{i} images loaded, {round(rss, 2)}GB memory used")
             x, hm, off, wh, mask, idx = self._decode(line)
-            self._x_train[i] = x
+            self._x[i] = x
             self._hmaps[i] = hm
             self._offsets[i] = off
             self._sizes[i] = wh
@@ -106,19 +107,28 @@ class DataHolder:
         logI(F"{i} images loaded, {round(rss, 2)}GB memory used")
 
     def generate_one(self):
-        rand_orders = np.random.permutation(self._x_train.shape[0])
-        for i in rand_orders:
-            x = self._x_train[i]
-            y = self._hmaps[i], self._offsets[i], self._sizes[i], self._masks[i], self._indices[i]
-            yield x, y
+        if self._x is not None:
+            rand_orders = np.random.permutation(self._x.shape[0])
+            for i in rand_orders:
+                x = self._x[i]
+                y = self._hmaps[i], self._offsets[i], self._sizes[i], self._masks[i], self._indices[i]
+                yield x, y
+        else:
+            np.random.shuffle(self.annotations)
+            for line in self.annotations:
+                x, hm, off, wh, mask, idx = self._decode(line)
+                yield x, (hm, off, wh, mask, idx)
 
     def generate_batch(self):
-        rand_orders = np.random.permutation(self._x_train.shape[0])
-        for i in range(self.num_batches):
-            ids = rand_orders[i * self.batch_size:(i + 1) * self.batch_size]
-            x = self._x_train[ids]
-            y = self._hmaps[ids], self._offsets[ids], self._sizes[ids], self._masks[ids], self._indices[ids]
-            yield x, y
+        if self._x is not None:
+            rand_orders = np.random.permutation(self._x.shape[0])
+            for i in range(self.num_batches):
+                ids = rand_orders[i * self.batch_size:(i + 1) * self.batch_size]
+                x = self._x[ids]
+                y = self._hmaps[ids], self._offsets[ids], self._sizes[ids], self._masks[ids], self._indices[ids]
+                yield x, y
+        else:
+            raise NotImplementedError("Only for cached data!")
 
     def _parse(self, line):
         items = line.strip().split(" ")
@@ -127,6 +137,8 @@ class DataHolder:
             image = read_flip_augment(path)
         else:
             image = read_image(items[0])
+        if len(image.shape) != 3 or image.shape[-1] != 3:
+            image = gray2color(image)
         boxes = []
         num_of_boxes = len(items) - 1
         assert num_of_boxes > 0

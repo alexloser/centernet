@@ -135,14 +135,14 @@ def train_centernet(conf, pretrained):
                                   num_classes=conf.num_classes,
                                   batch_size=conf.batch_size,
                                   max_boxes=conf.max_boxes)
-    dataholder_train.init()
+    # dataholder_train.init()
 
     dataholder_valid = DataHolder(train_list_files=conf.valid_list_files,
                                   input_size=conf.input_size,
                                   num_classes=conf.num_classes,
                                   batch_size=conf.batch_size,
                                   max_boxes=conf.max_boxes)
-    dataholder_valid.init()
+    dataholder_valid.cache()
 
     rss = psutil.Process(os.getpid()).memory_info().rss / (1024**3)
     logI(F"{round(rss, 2)}GB memory used")
