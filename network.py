@@ -34,11 +34,11 @@ def backbone_factory(name: str,
         return create_shufflenet(input_shape, batch_size=batch_size, num_classes=0, **kwargs)
     if name == "ghostnet":
         return create_ghostnet(input_shape, batch_size=batch_size, num_classes=0, **kwargs)
-    if name == "efficientnet_v1":
+    if "efficient" in name and "v1" in name:
         return create_efficientnet_v1(input_shape, batch_size=batch_size, num_classes=0, **kwargs)
-    if name == "efficientnet_v2":
+    if "efficient" in name and "v2" in name:
         return create_efficientnet_v2(input_shape, batch_size=batch_size, num_classes=0, **kwargs)
-    if name == "efficientnet_lite":
+    if "efficient" in name and "lite" in name:
         return create_efficientnet_lite(input_shape, batch_size=batch_size, num_classes=0, **kwargs)
 
     raise NotImplementedError(name)
