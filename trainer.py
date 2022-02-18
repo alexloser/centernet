@@ -3,7 +3,7 @@ import os, psutil, re
 import tensorflow as tf
 import tensorflow.keras as keras
 from cnnkit import print_model_summary, optimizer_factory, load_weights_from, save_model_to
-from centernet.loss import CombineLoss
+from centernet.loss import CenterNetLoss
 from centernet.dataholder import DataHolder
 from centernet.network import create_centernet, backbone_factory
 from pymagic import logI, print_dict, is_file
@@ -39,10 +39,10 @@ class CenterNetTrainer:
         self.batch_size = config.batch_size
         self.input_size = config.input_size
         self.num_classes = config.num_classes
-        self.loss_func = CombineLoss(config.num_classes,
-                                     hmap_weight=config.hmap_loss_weight,
-                                     off_weight=config.offset_loss_weight,
-                                     size_weight=config.size_loss_weight)
+        self.loss_func = CenterNetLoss(config.num_classes,
+                                       hmap_weight=config.hmap_loss_weight,
+                                       off_weight=config.offset_loss_weight,
+                                       size_weight=config.size_loss_weight)
         m = re.search("G([0-9]+)\\(", pretrained)
         if m:
             self.startG = int(m.groups()[0])
@@ -135,14 +135,12 @@ def train_centernet(conf, pretrained):
                                   num_classes=conf.num_classes,
                                   batch_size=conf.batch_size,
                                   max_boxes=conf.max_boxes)
-    # dataholder_train.init()
 
     dataholder_valid = DataHolder(train_list_files=conf.valid_list_files,
                                   input_size=conf.input_size,
                                   num_classes=conf.num_classes,
                                   batch_size=conf.batch_size,
-                                  max_boxes=conf.max_boxes)
-    dataholder_valid.cache()
+                                  max_boxes=conf.max_boxes).cache()
 
     rss = psutil.Process(os.getpid()).memory_info().rss / (1024**3)
     logI(F"{round(rss, 2)}GB memory used")
@@ -155,4 +153,5 @@ def train_centernet(conf, pretrained):
                 dataholder_valid, 
                 conf.save_model_dir,
                 save_name_prefix)
+
 

@@ -2,27 +2,27 @@
 import numpy as np
 
 
-def gaussian_radius(detect_size, min_overlap=0.7):
+def gaussian_radius(height, width, min_overlap=0.7):
     """ Get min gauss radius in three situations """
-    height, width = detect_size
+    h, w = float(height), float(width)
 
-    a1 = 1
-    b1 = (height + width)
-    c1 = width * height * (1 - min_overlap) / (1 + min_overlap)
+    a1 = 1.0
+    b1 = (h + w)
+    c1 = w * h * (1 - min_overlap) / (1 + min_overlap)
     sq1 = np.sqrt(b1**2 - 4 * a1 * c1)
-    r1 = (b1 + sq1) / 2
+    r1 = (b1 + sq1) / 2.0
 
-    a2 = 4
-    b2 = 2 * (height + width)
-    c2 = (1 - min_overlap) * width * height
+    a2 = 4.0
+    b2 = 2 * (h + w)
+    c2 = (1 - min_overlap) * w * h
     sq2 = np.sqrt(b2**2 - 4 * a2 * c2)
-    r2 = (b2 + sq2) / 2
+    r2 = (b2 + sq2) / 2.0
 
     a3 = 4 * min_overlap
-    b3 = -2 * min_overlap * (height + width)
-    c3 = (min_overlap - 1) * width * height
+    b3 = -2 * min_overlap * (h + w)
+    c3 = (min_overlap - 1) * w * h
     sq3 = np.sqrt(b3**2 - 4 * a3 * c3)
-    r3 = (b3 + sq3) / 2
+    r3 = (b3 + sq3) / 2.0
 
     return min(r1, r2, r3)
 

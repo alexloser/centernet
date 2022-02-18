@@ -38,7 +38,7 @@ def regl1_loss(y_true, y_pred, mask, index):
     return loss / (tf.math.reduce_sum(mask) + 1e-4)
 
 
-class CombineLoss:
+class CenterNetLoss:
     def __init__(self, num_classes, hmap_weight=1.0, off_weight=1.0, size_weight=0.1):
         self.num_classes = num_classes
         self.hmap_weight = hmap_weight

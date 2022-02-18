@@ -10,7 +10,7 @@ from bitcv import letterbox_embed, correct_box_o2l, gray2color
 from pymagic import logW, logI
 
 
-def decode_label(label, max_boxes, heatmap_shape, downsample_ratio):
+def encode_label(label, max_boxes, heatmap_shape, downsample_ratio):
     hm = np.zeros(shape=heatmap_shape, dtype=np.float32)
     off = np.zeros(shape=(max_boxes, 2), dtype=np.float32)
     wh = np.zeros(shape=(max_boxes, 2), dtype=np.float32)
@@ -19,18 +19,17 @@ def decode_label(label, max_boxes, heatmap_shape, downsample_ratio):
     for j, item in enumerate(label):
         item[:4] = item[:4] / downsample_ratio
         xmin, ymin, xmax, ymax, category = item
-        category = int(category)
-        h, w = int(ymax - ymin), int(xmax - xmin)
-        radius = gaussian_radius((h, w))
+        box_h, box_w = int(ymax - ymin), int(xmax - xmin)
+        radius = gaussian_radius(box_h, box_w)
         radius = max(0, int(radius))
         cx, cy = (xmin + xmax) / 2, (ymin + ymax) / 2
         center = np.array([cx, cy], dtype=np.float32)
         center_int = center.astype(np.int32)
-        create_gauss_heatmap(hm[:, :, category], center_int, radius)
+        create_gauss_heatmap(hm[:, :, int(category)], center_int, radius)
         off[j] = center - center_int
-        wh[j] = (w * 1.0, h * 1.0)
+        wh[j] = (box_w * 1.0, box_h * 1.0)
         mask[j] = 1
-        idx[j] = center_int[1] * hm.shape[0] + center_int[0]
+        idx[j] = center_int[1] * hm.shape[0] + center_int[0] # Row-Major based index of element
     return hm, off, wh, mask, idx
 
 
@@ -105,6 +104,7 @@ class DataHolder:
             self._indices[i] = idx
         rss = psutil.Process(os.getpid()).memory_info().rss / (1024**3)
         logI(F"{i} images loaded, {round(rss, 2)}GB memory used")
+        return self
 
     def generate_one(self):
         if self._x is not None:
@@ -174,7 +174,7 @@ class DataHolder:
         label = np.stack(corrected)
         label = label[label[:, 4] != -1]
         hmap_shape = (self.hmap_size, self.hmap_size, self.num_classes)
-        hm, off, wh, mask, idx = decode_label(label, self.max_boxes, hmap_shape, self.dsr)
+        hm, off, wh, mask, idx = encode_label(label, self.max_boxes, hmap_shape, self.dsr)
         if self.channel_means:
             resized = sub_means(resized, self.channel_means)
         x = normalize_l1(resized, 255.0, 0, True)
