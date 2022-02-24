@@ -43,6 +43,6 @@ nms_threshold: 0.3
 
 # combine loss weights
 hmap_loss_weight: 1.0
+reg_loss_weight: 1.0
 size_loss_weight: 0.1
-offset_loss_weight: 0.9
 

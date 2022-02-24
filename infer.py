@@ -8,11 +8,11 @@ from bitcv import read_image_zh, put_text, correct_box_l2o, Box
 from pymagic import logI, logF, Timer
 
 
-def gather_feat(feat, idx):
-    feat = tf.reshape(feat, shape=(feat.shape[0], -1, feat.shape[-1]))
-    idx = tf.cast(idx, dtype=tf.int32)
-    feat = tf.gather(params=feat, indices=idx, batch_dims=1)
-    return feat
+# def gather_feat(feat, idx):
+#     feat = tf.reshape(feat, shape=(feat.shape[0], -1, feat.shape[-1]))
+#     idx = tf.cast(idx, dtype=tf.int32)
+#     feat = tf.gather(params=feat, indices=idx, batch_dims=1)
+#     return feat
 
 
 def pool_nms(heatmap, pool_size=3):
@@ -67,7 +67,7 @@ class CenterNetDecoder:
     def __call__(self, image, pred, *args, **kwargs):
         raw_shape = np.array(image.shape, dtype=np.float32)[:2]
         num_classes = pred.shape[-1] - 4
-        hmap, off, size = tf.split(value=pred, num_or_size_splits=[num_classes, 2, 2], axis=-1)
+        hmap, reg, size = tf.split(value=pred, num_or_size_splits=[num_classes, 2, 2], axis=-1)
         hmap = tf.math.sigmoid(hmap)
         batch_size = hmap.shape[0]
         ####################################################################
@@ -78,15 +78,18 @@ class CenterNetDecoder:
         hmap = pool_nms(hmap)
         scores, inds, clses, ys, xs = self.topK(scores=hmap)
 
-        if off is not None:
-            off = gather_feat(feat=off, idx=inds)
-            xs = tf.reshape(xs, shape=(batch_size, self.K, 1)) + off[:, :, 0:1]
-            ys = tf.reshape(ys, shape=(batch_size, self.K, 1)) + off[:, :, 1:2]
+        if reg is not None:
+            reg = tf.reshape(reg, shape=(reg.shape[0], -1, reg.shape[-1]))
+            reg = tf.gather(reg, indices=tf.cast(inds, dtype=tf.int32), batch_dims=1)
+            xs = tf.reshape(xs, shape=(batch_size, self.K, 1)) + reg[:, :, 0:1]
+            ys = tf.reshape(ys, shape=(batch_size, self.K, 1)) + reg[:, :, 1:2]
         else:
             xs = tf.reshape(xs, shape=(batch_size, self.K, 1)) + 0.5
             ys = tf.reshape(ys, shape=(batch_size, self.K, 1)) + 0.5
 
-        size = gather_feat(feat=size, idx=inds)
+        size = tf.reshape(size, shape=(size.shape[0], -1, size.shape[-1]))
+        size = tf.gather(size, indices=tf.cast(inds, dtype=tf.int32), batch_dims=1)
+
         clses = tf.cast(tf.reshape(clses, (batch_size, self.K, 1)), dtype=tf.float32)
         scores = tf.reshape(scores, (batch_size, self.K, 1))
 
@@ -135,33 +138,34 @@ class CenterNetDecoder:
 
 
 class CenterNetInfer:
-    def __init__(self, model: keras.Model, param: object, **kwargs):
+    def __init__(self, model: keras.Model, config):
         self.model = model
-        self.param = param
+        self.conf = config
         if isinstance(self.model, tf.lite.Interpreter):
             self.model.allocate_tensors()
             output_details = self.model.get_output_details()
             self.output_tendor_id = int(output_details[0]["index"])
             self.input_tendor_id = int(self.model.get_input_details()[0]["index"])
-        self.decode = CenterNetDecoder(input_shape=self.param.input_shape,
-                                       max_boxes=self.param.max_boxes,
-                                       score_threshold=self.param.score_threshold,
-                                       nms_threshold=self.param.nms_threshold)
+        self.decode = CenterNetDecoder(input_shape=self.conf.input_shape,
+                                       max_boxes=self.conf.max_boxes,
+                                       score_threshold=self.conf.score_threshold,
+                                       nms_threshold=self.conf.nms_threshold)
+        self.colors = [(0,255,0),(255,0,0),(0,0,255),(240,240,0),(0,240,240),(240,0,240),(240,240,240)]
 
     def crop_and_resize(self, mat):
-        return resize2(mat, self.param.input_size, self.param.input_size)
+        return resize2(mat, self.conf.input_size, self.conf.input_size)
 
     def check_shapes(self, images: list):
         for img in images:
-            if img.shape[0] < self.param.min_size[0] or img.shape[1] < self.param.min_size[1]:
+            if img.shape[0] < self.conf.min_size[0] or img.shape[1] < self.conf.min_size[1]:
                 raise ValueError(F"Wrong image shape: {img.shape}")
             if img.shape[0] > img.shape[1]:
                 raise ValueError(F"Wrong image shape: {img.shape}")
 
     def preprocess(self, image) -> np.ndarray:
         x = np.array([self.crop_and_resize(image)], dtype=np.float32)
-        if self.param.channel_means and self.param.channel_means != [0, 0, 0]:
-            x = sub_means(x, self.param.channel_means)
+        if self.conf.channel_means and self.conf.channel_means != [0, 0, 0]:
+            x = sub_means(x, self.conf.channel_means)
         return normalize_l1(x, maxval=255.0, minval=0.0, local=True)
 
     def _inference(self, image):
@@ -174,7 +178,7 @@ class CenterNetInfer:
         else:
             pred = self.model.predict(x, batch_size=1)
         detections = self.decode(image, pred)
-        detections = non_max_suppression(detections, self.param.nms_threshold)
+        detections = non_max_suppression(detections, self.conf.nms_threshold)
         logI("Elapsed: %.4f" % timer.seconds())
         return detections
 
@@ -199,7 +203,7 @@ class CenterNetInfer:
             box[0], box[1], box[2], box[3] = xmin, ymin, xmax, ymax
         return detections
 
-    def draw_boxes(self, image, detections, idx2class, fontscale=1):
+    def draw_boxes(self, image, detections):
         if detections is None:
             return image
         labeled = image.copy()
@@ -208,10 +212,11 @@ class CenterNetInfer:
         classes = detections[:, 5]
         num_boxes = boxes.shape[0]
         for i in range(num_boxes):
+            color = self.colors[i % len(self.colors)]
             box = boxes[i]
-            info = "%s: %.2f" % (idx2class[int(classes[i])][0], scores[i])
-            Box(int(box[0]), int(box[1]), int(box[2]), int(box[3])).draw(labeled, (0, 0, 255), 2)
-            put_text(labeled, info, (int(box[0]) + 1, int(box[3]) - 2), (0, 255, 0), 1, fontscale)
+            Box(int(box[0]), int(box[1]), int(box[2]), int(box[3])).draw(labeled, color, 2)
+            put_text(labeled, ("%d" % int(classes[i])), (int(box[0]) + 2, int(box[1]) + 12), color, 1, 1)
+            put_text(labeled, ("%.2f" % scores[i]), (int(box[0]) + 2, int(box[3]) - 3), color, 1, 1)
         return labeled
 
 

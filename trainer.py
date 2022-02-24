@@ -6,7 +6,7 @@ from cnnkit import print_model_summary, optimizer_factory, load_weights_from, sa
 from centernet.loss import CenterNetLoss
 from centernet.dataholder import DataHolder
 from centernet.network import create_centernet, backbone_factory
-from pymagic import logI, print_dict, is_file
+from pymagic import logI, print_dict, is_file, redirect_logging_stream
 from tqdm import tqdm
 
 
@@ -14,18 +14,18 @@ from tqdm import tqdm
 def train_one_batch(model, x, y, optimizer, loss_func):
     with tf.GradientTape() as tape:
         pred = model(x, training=True)
-        hmap_loss, offset_loss, size_loss, total_loss = loss_func(y_pred=pred, y_true=y)
+        hmap_loss, reg_loss, size_loss, total_loss = loss_func(y_pred=pred, y_true=y)
         model_loss = tf.reduce_sum(model.losses)
         total_loss += 0.1 * model_loss
     grad = tape.gradient(target=total_loss, sources=model.trainable_variables)
     optimizer.apply_gradients(grads_and_vars=zip(grad, model.trainable_variables))
-    return hmap_loss, offset_loss, size_loss, total_loss
+    return hmap_loss, reg_loss, size_loss, total_loss
 
 @tf.function
 def eval_one_batch(model, x, y, loss_func):
     pred = model(x, training=False)
-    hmap_loss, offset_loss, size_loss, total_loss = loss_func(y_pred=pred, y_true=y)
-    return hmap_loss, offset_loss, size_loss, total_loss
+    hmap_loss, reg_loss, size_loss, total_loss = loss_func(y_pred=pred, y_true=y)
+    return hmap_loss, reg_loss, size_loss, total_loss
 
 
 class CenterNetTrainer:
@@ -41,7 +41,7 @@ class CenterNetTrainer:
         self.num_classes = config.num_classes
         self.loss_func = CenterNetLoss(config.num_classes,
                                        hmap_weight=config.hmap_loss_weight,
-                                       off_weight=config.offset_loss_weight,
+                                       reg_weight=config.reg_loss_weight,
                                        size_weight=config.size_loss_weight)
         m = re.search("G([0-9]+)\\(", pretrained)
         if m:
@@ -58,9 +58,11 @@ class CenterNetTrainer:
         return gen_train, gen_valid
 
     def run(self, max_epoches, dataholder_train, dataholder_valid, save_model_dir, save_name_prefix):
+        redirect_logging_stream(F"{save_model_dir}/training.log", mode="w")
+        
         for epoch in range(1, max_epoches + 1):
             mean_hmap_loss = keras.metrics.Mean()
-            mean_offset_loss = keras.metrics.Mean()
+            mean_reg_loss = keras.metrics.Mean()
             mean_size_loss = keras.metrics.Mean()
             mean_train_loss = keras.metrics.Mean()
 
@@ -68,13 +70,13 @@ class CenterNetTrainer:
 
             pbar = tqdm(total=dataholder_train.num_batches, desc=F"Train {epoch}/{max_epoches}", mininterval=0.5)
             for x, y in gen_train:
-                hmap_loss, offset_loss, size_loss, total_loss = train_one_batch(self.model, x, y, self.optimizer, self.loss_func)
+                hmap_loss, reg_loss, size_loss, total_loss = train_one_batch(self.model, x, y, self.optimizer, self.loss_func)
                 mean_hmap_loss.update_state(hmap_loss)
-                mean_offset_loss.update_state(offset_loss)
+                mean_reg_loss.update_state(reg_loss)
                 mean_size_loss.update_state(size_loss)
                 mean_train_loss.update_state(total_loss)
                 pbar.set_postfix(hmap=mean_hmap_loss.result().numpy(),
-                                 offset=mean_offset_loss.result().numpy(),
+                                 reg=mean_reg_loss.result().numpy(),
                                  size=mean_size_loss.result().numpy(),
                                  total=mean_train_loss.result().numpy(),
                                  LR=self.optimizer.lr.numpy())
@@ -83,19 +85,19 @@ class CenterNetTrainer:
             pbar.close()
 
             mean_hmap_loss = keras.metrics.Mean()
-            mean_offset_loss = keras.metrics.Mean()
+            mean_reg_loss = keras.metrics.Mean()
             mean_size_loss = keras.metrics.Mean()
             mean_valid_loss = keras.metrics.Mean()
 
             pbar = tqdm(total=dataholder_valid.num_batches, desc=F"Valid {epoch}/{max_epoches}", mininterval=0.5)
             for x, y in gen_valid:
-                hmap_loss, offset_loss, size_loss, total_loss = eval_one_batch(self.model, x, y, self.loss_func)
+                hmap_loss, reg_loss, size_loss, total_loss = eval_one_batch(self.model, x, y, self.loss_func)
                 mean_hmap_loss.update_state(hmap_loss)
-                mean_offset_loss.update_state(offset_loss)
+                mean_reg_loss.update_state(reg_loss)
                 mean_size_loss.update_state(size_loss)
                 mean_valid_loss.update_state(total_loss)
                 pbar.set_postfix(hmap=mean_hmap_loss.result().numpy(),
-                                 offset=mean_offset_loss.result().numpy(),
+                                 reg=mean_reg_loss.result().numpy(),
                                  size=mean_size_loss.result().numpy(),
                                  total=mean_valid_loss.result().numpy(),
                                  LR=self.optimizer.lr.numpy())

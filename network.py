@@ -88,7 +88,7 @@ def create_centernet(backbone: keras.Model,
     ])
     y1 = hmap_head.forward(x)
 
-    offset_head = LayerBlock([
+    reg_head = LayerBlock([
         tf.keras.layers.Conv2D(filters=head_channels,
                                kernel_size=(3, 3),
                                strides=1,
@@ -101,7 +101,7 @@ def create_centernet(backbone: keras.Model,
                                padding="same",
                                kernel_initializer=keras.initializers.he_normal())
     ])
-    y2 = offset_head.forward(x)
+    y2 = reg_head.forward(x)
 
     size_head = LayerBlock([
         tf.keras.layers.Conv2D(filters=head_channels,
