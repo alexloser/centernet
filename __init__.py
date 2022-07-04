@@ -1,3 +1,3 @@
-from .trainer import train_centernet
+from .trainer import trainCenterNet
 
 

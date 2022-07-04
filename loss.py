@@ -2,7 +2,7 @@
 import tensorflow as tf
 
 @tf.function
-def focal_loss(gt, pred):
+def focalLoss(gt, pred):
     """ Return focal loss of predict heatmaps and ground-truth heatmaps """
     positive = tf.cast(tf.equal(gt, 1), dtype=tf.float32)
     negtive = tf.cast(tf.less(gt, 1), dtype=tf.float32)
@@ -20,7 +20,7 @@ def focal_loss(gt, pred):
 
 
 @tf.function
-def regl1_loss(y_true, y_pred, mask, index):
+def regL1Loss(y_true, y_pred, mask, index):
     """ Return L1 regression loss of prediction and truth,
         if `pred` is predict sizes, `truth` should be ground truth sizes,
         if `pred` is predict regs, `truth` should be ground truth regs.
@@ -47,9 +47,9 @@ class CenterNetLoss:
 
         pred_hmaps = tf.clip_by_value(t=tf.sigmoid(pred_hmaps), clip_value_min=1e-4, clip_value_max=1.0 - 1e-4)
 
-        hmap_loss = focal_loss(true_hmaps, pred_hmaps)
-        reg_loss = regl1_loss(y_true=true_regs, y_pred=pred_regs, mask=masks, index=indices)
-        size_loss = regl1_loss(y_true=true_sizes, y_pred=pred_sizes, mask=masks, index=indices)
+        hmap_loss = focalLoss(true_hmaps, pred_hmaps)
+        reg_loss = regL1Loss(y_true=true_regs, y_pred=pred_regs, mask=masks, index=indices)
+        size_loss = regL1Loss(y_true=true_sizes, y_pred=pred_sizes, mask=masks, index=indices)
 
         total_loss = self.hmap_weight * hmap_loss + self.reg_weight * reg_loss + self.size_weight * size_loss
 

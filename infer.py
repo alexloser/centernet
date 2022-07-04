@@ -2,26 +2,19 @@
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
-from cnnkit.preprocess import sub_means, normalize_l1
-from bitcv import resize2, letterbox_embed, letterbox_embed_optmized
-from bitcv import read_image_zh, put_text, correct_box_l2o, Box
+from cnnkit.preprocess import subMeans, normalizeL1
+from bitcv import resizeTo, letterboxEmbed, letterboxEmbedOptimized
+from bitcv import readImageZh, putText, correctBoxL2O, Box
 from pymagic import logI, logF, Timer
 
 
-# def gather_feat(feat, idx):
-#     feat = tf.reshape(feat, shape=(feat.shape[0], -1, feat.shape[-1]))
-#     idx = tf.cast(idx, dtype=tf.int32)
-#     feat = tf.gather(params=feat, indices=idx, batch_dims=1)
-#     return feat
-
-
-def pool_nms(heatmap, pool_size=3):
+def poolNMS(heatmap, pool_size=3):
     hmax = keras.layers.MaxPool2D(pool_size=pool_size, strides=1, padding="same")(heatmap)
     keep = tf.cast(tf.equal(heatmap, hmax), tf.float32)
     return hmax * keep
 
 
-def calc_iou(b1, b2):
+def calcIOU(b1, b2):
     b1_x1, b1_y1, b1_x2, b1_y2 = b1[0], b1[1], b1[2], b1[3]
     b2_x1, b2_y1, b2_x2, b2_y2 = b2[:, 0], b2[:, 1], b2[:, 2], b2[:, 3]
     inter_rect_x1 = np.maximum(b1_x1, b2_x1)
@@ -34,7 +27,7 @@ def calc_iou(b1, b2):
     return inter_area / np.maximum((area_b1 + area_b2 - inter_area), 1e-6)
 
 
-def non_max_suppression(detections, threhold):
+def numpyNMS(detections, threhold):
     unique_class = np.unique(detections[:, -1])
     if len(unique_class) == 0:
         return None
@@ -52,7 +45,7 @@ def non_max_suppression(detections, threhold):
             best_box.append(detection[0])
             if len(detection) == 1:
                 break
-            val = calc_iou(best_box[-1], detection[1:])
+            val = calcIOU(best_box[-1], detection[1:])
             detection = detection[1:][val < threhold]
     return np.array(best_box)
 
@@ -75,7 +68,7 @@ class CenterNetDecoder:
         self.dsr = self.input_shape[1] // hmap.shape[1] 
         assert self.dsr == 4
         ####################################################################
-        hmap = pool_nms(hmap)
+        hmap = poolNMS(hmap)
         scores, inds, clses, ys, xs = self.topK(scores=hmap)
 
         if reg is not None:
@@ -102,11 +95,11 @@ class CenterNetDecoder:
 
         bboxes = tf.concat(values=values, axis=2)
         detections = tf.concat(values=[bboxes, scores, clses], axis=2)
-        detections = self.map_to_original(raw_shape, detections)
+        detections = self.mapToOrignal(raw_shape, detections)
 
         return detections
 
-    def map_to_original(self, raw_shape, detections):
+    def mapToOrignal(self, raw_shape, detections):
         bboxes, scores, clses = tf.split(value=detections, num_or_size_splits=[4, 1, 1], axis=2)
         bboxes, scores, clses = bboxes.numpy()[0], scores.numpy()[0], clses.numpy()[0]
         resize_ratio = raw_shape / self.input_shape
@@ -117,13 +110,13 @@ class CenterNetDecoder:
         bboxes[:, 1::2] = np.clip(a=bboxes[:, 1::2], a_min=0, a_max=raw_shape[0])
         score_mask = scores >= self.score_threshold
 
-        bboxes = self.mask_reshape(bboxes, np.tile(score_mask,(1, 4)))
-        scores = self.mask_reshape(scores,score_mask)
-        clses = self.mask_reshape(clses, score_mask)
+        bboxes = self.maskReshape(bboxes, np.tile(score_mask,(1, 4)))
+        scores = self.maskReshape(scores,score_mask)
+        clses = self.maskReshape(clses, score_mask)
         detections = np.concatenate([bboxes, scores, clses], axis=-1)
         return detections
 
-    def mask_reshape(self, a, mask):
+    def maskReshape(self, a, mask):
         return a[mask].reshape(-1, a.shape[-1])
 
     def topK(self, scores):
@@ -152,10 +145,10 @@ class CenterNetInfer:
                                        nms_threshold=self.conf.nms_threshold)
         self.colors = [(0,255,0),(255,0,0),(0,0,255),(240,240,0),(0,240,240),(240,0,240),(240,240,240)]
 
-    def crop_and_resize(self, mat):
-        return resize2(mat, self.conf.input_size, self.conf.input_size)
+    def cropResize(self, mat):
+        return resizeTo(mat, self.conf.input_size, self.conf.input_size)
 
-    def check_shapes(self, images: list):
+    def check(self, images: list):
         for img in images:
             if img.shape[0] < self.conf.min_size[0] or img.shape[1] < self.conf.min_size[1]:
                 raise ValueError(F"Wrong image shape: {img.shape}")
@@ -163,10 +156,10 @@ class CenterNetInfer:
                 raise ValueError(F"Wrong image shape: {img.shape}")
 
     def preprocess(self, image) -> np.ndarray:
-        x = np.array([self.crop_and_resize(image)], dtype=np.float32)
+        x = np.array([self.cropResize(image)], dtype=np.float32)
         if self.conf.channel_means and self.conf.channel_means != [0, 0, 0]:
-            x = sub_means(x, self.conf.channel_means)
-        return normalize_l1(x, maxval=255.0, minval=0.0, local=True)
+            x = subMeans(x, self.conf.channel_means)
+        return normalizeL1(x, maxval=255.0, minval=0.0, local=True)
 
     def _inference(self, image):
         timer = Timer()
@@ -178,24 +171,24 @@ class CenterNetInfer:
         else:
             pred = self.model.predict(x, batch_size=1)
         detections = self.decode(image, pred)
-        detections = non_max_suppression(detections, self.conf.nms_threshold)
+        detections = numpyNMS(detections, self.conf.nms_threshold)
         logI("Elapsed: %.4f" % timer.seconds())
         return detections
 
     def inference(self, path, image=None):
         if image is None:
-            image = read_image_zh(path)
+            image = readImageZh(path)
         lettersize = max(image.shape[:2])
         if 0:
-            resized = letterbox_embed(image, lettersize, lettersize)
+            resized = letterboxEmbed(image, lettersize, lettersize)
         else:
-            resized = letterbox_embed_optmized(image, lettersize)
+            resized = letterboxEmbedOptimized(image, lettersize)
         detections = self._inference(resized)
         if detections is None:
             return
         boxes = detections[:, 0:4]
         for box in boxes:
-            xmin, ymin, xmax, ymax = correct_box_l2o(box[0], box[1], box[2], box[3], lettersize, image.shape[:2])
+            xmin, ymin, xmax, ymax = correctBoxL2O(box[0], box[1], box[2], box[3], lettersize, image.shape[:2])
             xmin = max(xmin, 0)
             ymin = max(ymin, 0)
             xmax = min(xmax, image.shape[1]-1)
@@ -203,7 +196,7 @@ class CenterNetInfer:
             box[0], box[1], box[2], box[3] = xmin, ymin, xmax, ymax
         return detections
 
-    def draw_boxes(self, image, detections):
+    def drawBoxes(self, image, detections):
         if detections is None:
             return image
         labeled = image.copy()
@@ -215,8 +208,8 @@ class CenterNetInfer:
             color = self.colors[i % len(self.colors)]
             box = boxes[i]
             Box(int(box[0]), int(box[1]), int(box[2]), int(box[3])).draw(labeled, color, 2)
-            put_text(labeled, ("%d" % int(classes[i])), (int(box[0]) + 2, int(box[1]) + 12), color, 1, 1)
-            put_text(labeled, ("%.2f" % scores[i]), (int(box[0]) + 2, int(box[3]) - 3), color, 1, 1)
+            putText(labeled, ("%d" % int(classes[i])), (int(box[0]) + 2, int(box[1]) + 12), color, 1, 1)
+            putText(labeled, ("%.2f" % scores[i]), (int(box[0]) + 2, int(box[3]) - 3), color, 1, 1)
         return labeled
 
 

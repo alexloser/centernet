@@ -2,7 +2,7 @@
 import numpy as np
 
 
-def gaussian_radius(height, width, min_overlap=0.7):
+def gaussianRadius(height, width, min_overlap=0.7):
     """ Get min gauss radius in three situations """
     h, w = float(height), float(width)
 
@@ -27,7 +27,7 @@ def gaussian_radius(height, width, min_overlap=0.7):
     return min(r1, r2, r3)
 
 
-def gauss_distribution_2D(shape, sigma=1, eps=None):
+def gaussDistribution2D(shape, sigma=1, eps=None):
     """ Return standard normal distribution matrix """
     m, n = [(s - 1.) / 2. for s in shape]
     y, x = np.ogrid[-m:m + 1, -n:n + 1]
@@ -39,10 +39,10 @@ def gauss_distribution_2D(shape, sigma=1, eps=None):
     return h
 
 
-def create_gauss_heatmap(heatmap, center, radius, scale=1.0):
+def createGaussHeatmap(heatmap, center, radius, scale=1.0):
     """ Mask heatmap use gauss distribution around center """
     diameter = 2 * radius + 1
-    gaussian = gauss_distribution_2D((diameter, diameter), sigma=diameter / 6)
+    gaussian = gaussDistribution2D((diameter, diameter), sigma=diameter / 6)
 
     h, w = heatmap.shape[0], heatmap.shape[1]
     cx, cy = int(center[0]), int(center[1])
@@ -58,3 +58,4 @@ def create_gauss_heatmap(heatmap, center, radius, scale=1.0):
     np.maximum(masked_heatmap, masked_gaussian * scale, out=masked_heatmap)
 
     return heatmap
+

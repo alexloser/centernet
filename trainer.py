@@ -2,16 +2,16 @@
 import os, psutil, re
 import tensorflow as tf
 import tensorflow.keras as keras
-from cnnkit import print_model_summary, optimizer_factory, load_weights_from, save_model_to
+from cnnkit import printModelSummary, OptimizerFactory, loadWeightsFrom, saveModelTo
 from centernet.loss import CenterNetLoss
 from centernet.dataholder import DataHolder
-from centernet.network import create_centernet, backbone_factory
-from pymagic import logI, print_dict, is_file, redirect_logging_stream
+from centernet.network import createCenterNet, backboneFactory
+from pymagic import logI, printDict, isFile, redirectLoggingStream
 from tqdm import tqdm
 
 
 @tf.function
-def train_one_batch(model, x, y, optimizer, loss_func):
+def trainOneBatch(model, x, y, optimizer, loss_func):
     with tf.GradientTape() as tape:
         pred = model(x, training=True)
         hmap_loss, reg_loss, size_loss, total_loss = loss_func(y_pred=pred, y_true=y)
@@ -22,7 +22,7 @@ def train_one_batch(model, x, y, optimizer, loss_func):
     return hmap_loss, reg_loss, size_loss, total_loss
 
 @tf.function
-def eval_one_batch(model, x, y, loss_func):
+def evalOneBatch(model, x, y, loss_func):
     pred = model(x, training=False)
     hmap_loss, reg_loss, size_loss, total_loss = loss_func(y_pred=pred, y_true=y)
     return hmap_loss, reg_loss, size_loss, total_loss
@@ -32,8 +32,8 @@ class CenterNetTrainer:
     def __init__(self, config, model: keras.Model, optimizer, pretrained):
         super().__init__()
         self.model = model
-        if pretrained and is_file(pretrained):
-            load_weights_from(self.model, pretrained)
+        if pretrained and isFile(pretrained):
+            loadWeightsFrom(self.model, pretrained)
         self.model.compile(optimizer)
         self.optimizer = optimizer
         self.batch_size = config.batch_size
@@ -49,16 +49,16 @@ class CenterNetTrainer:
         else:
             self.startG = 0
 
-    def _make_generator(self, dataholder_train, dataholder_valid) -> tuple:
+    def _makeGenerator(self, dataholder_train, dataholder_valid) -> tuple:
         types = (tf.float32, (tf.float32, tf.float32, tf.float32, tf.float32, tf.float32))
-        gen_train = tf.data.Dataset.from_generator(dataholder_train.generate_one, types)
-        gen_valid = tf.data.Dataset.from_generator(dataholder_valid.generate_one, types)
+        gen_train = tf.data.Dataset.from_generator(dataholder_train.generateOne, types)
+        gen_valid = tf.data.Dataset.from_generator(dataholder_valid.generateOne, types)
         gen_train = gen_train.batch(self.batch_size, drop_remainder=True).prefetch(tf.data.AUTOTUNE)
         gen_valid = gen_valid.batch(self.batch_size, drop_remainder=True)
         return gen_train, gen_valid
 
     def run(self, max_epoches, dataholder_train, dataholder_valid, save_model_dir, save_name_prefix):
-        redirect_logging_stream(F"{save_model_dir}/training.log", mode="w")
+        redirectLoggingStream(F"{save_model_dir}/training.log", mode="w")
         
         for epoch in range(1, max_epoches + 1):
             mean_hmap_loss = keras.metrics.Mean()
@@ -66,11 +66,11 @@ class CenterNetTrainer:
             mean_size_loss = keras.metrics.Mean()
             mean_train_loss = keras.metrics.Mean()
 
-            gen_train, gen_valid = self._make_generator(dataholder_train, dataholder_valid)
+            gen_train, gen_valid = self._makeGenerator(dataholder_train, dataholder_valid)
 
             pbar = tqdm(total=dataholder_train.num_batches, desc=F"Train {epoch}/{max_epoches}", mininterval=0.5)
             for x, y in gen_train:
-                hmap_loss, reg_loss, size_loss, total_loss = train_one_batch(self.model, x, y, self.optimizer, self.loss_func)
+                hmap_loss, reg_loss, size_loss, total_loss = trainOneBatch(self.model, x, y, self.optimizer, self.loss_func)
                 mean_hmap_loss.update_state(hmap_loss)
                 mean_reg_loss.update_state(reg_loss)
                 mean_size_loss.update_state(size_loss)
@@ -91,7 +91,7 @@ class CenterNetTrainer:
 
             pbar = tqdm(total=dataholder_valid.num_batches, desc=F"Valid {epoch}/{max_epoches}", mininterval=0.5)
             for x, y in gen_valid:
-                hmap_loss, reg_loss, size_loss, total_loss = eval_one_batch(self.model, x, y, self.loss_func)
+                hmap_loss, reg_loss, size_loss, total_loss = evalOneBatch(self.model, x, y, self.loss_func)
                 mean_hmap_loss.update_state(hmap_loss)
                 mean_reg_loss.update_state(reg_loss)
                 mean_size_loss.update_state(size_loss)
@@ -110,26 +110,26 @@ class CenterNetTrainer:
             valid_loss = mean_valid_loss.result().numpy()
             logI("Epoch-%d final: train_loss=%.4f valid_loss=%.4f" % (epoch, train_loss, valid_loss))
             name = "%s-G%02d(%.4f_%.4f).h5" % (save_name_prefix, epoch+self.startG, train_loss, valid_loss)
-            save_model_to(self.model, path=F"{save_model_dir}/{name}", include_optimizer=False, only_weights=False)
+            saveModelTo(self.model, path=F"{save_model_dir}/{name}", include_optimizer=False, only_weights=False)
 
 
 
-def train_centernet(conf, pretrained):
-    backbone = backbone_factory(name=conf.backbone,
-                                input_shape=conf.input_shape,
-                                **conf.backbone_args)
+def trainCenterNet(conf, pretrained):
+    backbone = backboneFactory(name=conf.backbone,
+                               input_shape=conf.input_shape,
+                               **conf.backbone_args)
 
-    model = create_centernet(backbone=backbone,
-                             input_shape=conf.input_shape,
-                             num_classes=conf.num_classes,
-                             deconv_filters=conf.deconv_filters,
-                             head_channels=conf.head_channels,
-                             act_type=conf.act_type)
+    model = createCenterNet(backbone=backbone,
+                            input_shape=conf.input_shape,
+                            num_classes=conf.num_classes,
+                            deconv_filters=conf.deconv_filters,
+                            head_channels=conf.head_channels,
+                            act_type=conf.act_type)
 
-    print_model_summary(model, F"{conf.save_model_dir}/cn-{conf.backbone}")
+    printModelSummary(model, F"{conf.save_model_dir}/cn-{conf.backbone}")
 
-    optimizer = optimizer_factory(**conf.optimizer)
-    print_dict(optimizer.get_config())
+    optimizer = OptimizerFactory(**conf.optimizer)
+    printDict(optimizer.get_config())
 
     DataHolder.debug_mode = 0
     dataholder_train = DataHolder(train_list_files=conf.train_list_files,

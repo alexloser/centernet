@@ -2,55 +2,55 @@
 import tensorflow as tf
 import tensorflow.keras as keras
 from typing import Union
-from cnnkit.backbones.darknet_tiny import csp_darknet53_tiny
-from cnnkit.backbones.mobilenet_v2_tf import create_mobilenet_v2
-from cnnkit.backbones.mobilenet_v3_tf import create_mobilenet_v3
-from cnnkit.backbones.shufflenet_v2 import create_shufflenet
-from cnnkit.backbones.ghostnet import create_ghostnet
-from cnnkit.backbones.efficientnet_v1 import create_efficientnet_v1
-from cnnkit.backbones.efficientnet_v2 import create_efficientnet_v2
-from cnnkit.backbones.efficientnet_lite import create_efficientnet_lite
-from cnnkit.backbones.densenet import create_densenet
-from cnnkit.backbones.resnet_xt import create_resnet_xt
-from cnnkit.extra import active_function
+from cnnkit.backbones.darknet_tiny import cspDarkNet53Tiny
+from cnnkit.backbones.mobilenet_v2_tf import createMobileNetV2
+from cnnkit.backbones.mobilenet_v3_tf import createMobileNetV3
+from cnnkit.backbones.shufflenet_v2 import createShuffleNet
+from cnnkit.backbones.ghostnet import createGhostNet
+from cnnkit.backbones.efficientnet_v1 import createEfficientNetV1
+from cnnkit.backbones.efficientnet_v2 import createEfficientNetV2
+from cnnkit.backbones.efficientnet_lite import createEfficientNetLite
+from cnnkit.backbones.densenet import createDenseNet
+from cnnkit.backbones.resnet_xt import createResNetXT
+from cnnkit.extra import activeFunction
 from cnnkit.utils import LayerBlock
 
 
-def backbone_factory(name: str,
-                     input_shape: Union[list, tuple, int],
-                     batch_size: int = None,
-                     **kwargs) -> keras.Model:
+def backboneFactory(name: str,
+                    input_shape: Union[list, tuple, int],
+                    batch_size: int = None,
+                    **kwargs) -> keras.Model:
     if isinstance(input_shape, int):
         input_shape = (input_shape, input_shape, 3)
-    if name == "csp_darknet53_tiny":
-        return csp_darknet53_tiny(input_shape, batch_size, **kwargs)
-    if name == "resnet_xt":
-        return create_resnet_xt(input_shape, batch_size=batch_size, num_classes=0, **kwargs)
-    if name == "densenet":
-        return create_densenet(input_shape, batch_size=batch_size, num_classes=0, **kwargs)
-    if name == "mobilenet":
-        return create_mobilenet_v3(input_shape, batch_size=batch_size, num_classes=0, **kwargs)
-    if name == "shufflenet":
-        return create_shufflenet(input_shape, batch_size=batch_size, num_classes=0, **kwargs)
-    if name == "ghostnet":
-        return create_ghostnet(input_shape, batch_size=batch_size, num_classes=0, **kwargs)
+    name = name.lower()
+    if "csp" in name and "dark" in name and "tiny" in name:
+        return cspDarkNet53Tiny(input_shape, batch_size, **kwargs)
+    if "resnet" in name:
+        return createResNetXT(input_shape, batch_size=batch_size, num_classes=0, **kwargs)
+    if "dense" in name:
+        return createDenseNet(input_shape, batch_size=batch_size, num_classes=0, **kwargs)
+    if "mobilenet" in name:
+        return createMobileNetV3(input_shape, batch_size=batch_size, num_classes=0, **kwargs)
+    if "shuffle" in name:
+        return createShuffleNet(input_shape, batch_size=batch_size, num_classes=0, **kwargs)
+    if "ghost" in name:
+        return createGhostNet(input_shape, batch_size=batch_size, num_classes=0, **kwargs)
     if "efficient" in name and "v1" in name:
-        return create_efficientnet_v1(input_shape, batch_size=batch_size, num_classes=0, **kwargs)
+        return createEfficientNetV1(input_shape, batch_size=batch_size, num_classes=0, **kwargs)
     if "efficient" in name and "v2" in name:
-        return create_efficientnet_v2(input_shape, batch_size=batch_size, num_classes=0, **kwargs)
+        return createEfficientNetV2(input_shape, batch_size=batch_size, num_classes=0, **kwargs)
     if "efficient" in name and "lite" in name:
-        return create_efficientnet_lite(input_shape, batch_size=batch_size, num_classes=0, **kwargs)
-
+        return createEfficientNetLite(input_shape, batch_size=batch_size, num_classes=0, **kwargs)
     raise NotImplementedError(name)
 
 
-def create_centernet(backbone: keras.Model,
-                     input_shape: Union[list, tuple],
-                     num_classes: int,
-                     deconv_filters: list = [128, 128, 128],
-                     head_channels: int = 64,
-                     batch_size: int = None,
-                     act_type: str = "swish") -> keras.Model:
+def createCenterNet(backbone: keras.Model,
+                    input_shape: Union[list, tuple],
+                    num_classes: int,
+                    deconv_filters: list = [128, 128, 128],
+                    head_channels: int = 64,
+                    batch_size: int = None,
+                    act_type: str = "swish") -> keras.Model:
     inputs = keras.layers.Input(shape=input_shape, batch_size=batch_size)
     x = backbone(inputs)
 
@@ -68,7 +68,7 @@ def create_centernet(backbone: keras.Model,
                                          use_bias=False,
                                          name=F"deconv_{i+1}"),
             keras.layers.BatchNormalization(),
-            active_function(act_type)
+            activeFunction(act_type)
         ])
     
     x = upsamples.forward(x)
@@ -79,7 +79,7 @@ def create_centernet(backbone: keras.Model,
                                strides=1,
                                padding="same",
                                kernel_initializer=keras.initializers.he_normal()),
-        active_function(act_type),
+        activeFunction(act_type),
         tf.keras.layers.Conv2D(filters=num_classes,
                                kernel_size=(1, 1),
                                strides=1,
@@ -94,7 +94,7 @@ def create_centernet(backbone: keras.Model,
                                strides=1,
                                padding="same",
                                kernel_initializer=keras.initializers.he_normal()),
-        active_function(act_type),
+        activeFunction(act_type),
         tf.keras.layers.Conv2D(filters=2,
                                kernel_size=(1, 1),
                                strides=1,
@@ -109,7 +109,7 @@ def create_centernet(backbone: keras.Model,
                                strides=1,
                                padding="same",
                                kernel_initializer=keras.initializers.he_normal()),
-        active_function(act_type),
+        activeFunction(act_type),
         tf.keras.layers.Conv2D(filters=2,
                                kernel_size=(1, 1),
                                strides=1,

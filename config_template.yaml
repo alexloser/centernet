@@ -22,7 +22,7 @@ channel_means: []
 batch_size: 8
 max_epoches: 99
 
-backbone: csp_darknet53_tiny
+backbone: cspDarkNet53Tiny
 backbone_args:
   active: leaky
 act_type: leaky

@@ -3,14 +3,14 @@ import os, psutil
 import re
 import numpy as np
 from collections import defaultdict
-from cnnkit.preprocess import sub_means, normalize_l1
-from centernet.gauss import gaussian_radius, create_gauss_heatmap
-from bitcv import Box, show_image, read_image, flip2
-from bitcv import letterbox_embed, correct_box_o2l, gray2color
+from cnnkit.preprocess import subMeans, normalizeL1
+from centernet.gauss import gaussianRadius, createGaussHeatmap
+from bitcv import Box, showImage, readImage, flipTo
+from bitcv import letterboxEmbed, correctBoxO2L, gray2Color
 from pymagic import logW, logI
 
 
-def encode_label(label, max_boxes, heatmap_shape, downsample_ratio):
+def encodeLabel(label, max_boxes, heatmap_shape, downsample_ratio):
     hm = np.zeros(shape=heatmap_shape, dtype=np.float32)
     reg = np.zeros(shape=(max_boxes, 2), dtype=np.float32)
     wh = np.zeros(shape=(max_boxes, 2), dtype=np.float32)
@@ -20,12 +20,12 @@ def encode_label(label, max_boxes, heatmap_shape, downsample_ratio):
         item[:4] = item[:4] / downsample_ratio
         xmin, ymin, xmax, ymax, category = item
         box_h, box_w = int(ymax - ymin), int(xmax - xmin)
-        radius = gaussian_radius(box_h, box_w)
+        radius = gaussianRadius(box_h, box_w)
         radius = max(0, int(radius))
         cx, cy = (xmin + xmax) / 2, (ymin + ymax) / 2
         center = np.array([cx, cy], dtype=np.float32)
         center_int = center.astype(np.int32)
-        create_gauss_heatmap(hm[:, :, int(category)], center_int, radius)
+        createGaussHeatmap(hm[:, :, int(category)], center_int, radius)
         reg[j] = center - center_int
         wh[j] = (box_w * 1.0, box_h * 1.0)
         mask[j] = 1
@@ -33,14 +33,14 @@ def encode_label(label, max_boxes, heatmap_shape, downsample_ratio):
     return hm, reg, wh, mask, idx
 
 
-def read_flip_augment(path):
-    image = read_image(path[:path.index(".flip")])
+def readFlipAugment(path):
+    image = readImage(path[:path.index(".flip")])
     if ".flip-x." in path:
-        image = flip2(image, 'x')
+        image = flipTo(image, 'x')
     elif ".flip-y." in path:
-        image = flip2(image, 'y')
+        image = flipTo(image, 'y')
     elif ".flip-xy." in path:
-        image = flip2(image, 'xy')
+        image = flipTo(image, 'xy')
     else:
         raise ValueError(path)
     return image
@@ -106,7 +106,7 @@ class DataHolder:
         logI(F"{i} images loaded, {round(rss, 2)}GB memory used")
         return self
 
-    def generate_one(self):
+    def generateOne(self):
         if self._x is not None:
             rand_orders = np.random.permutation(self._x.shape[0])
             for i in rand_orders:
@@ -119,7 +119,7 @@ class DataHolder:
                 x, hm, reg, wh, mask, idx = self._decode(line)
                 yield x, (hm, reg, wh, mask, idx)
 
-    def generate_batch(self):
+    def generateBatch(self):
         if self._x is not None:
             rand_orders = np.random.permutation(self._x.shape[0])
             for i in range(self.num_batches):
@@ -134,11 +134,11 @@ class DataHolder:
         items = line.strip().split(" ")
         path = items[0]
         if path.endswith(".augment") and ".flip" in path:
-            image = read_flip_augment(path)
+            image = readFlipAugment(path)
         else:
-            image = read_image(items[0])
+            image = readImage(items[0])
         if len(image.shape) != 3 or image.shape[-1] != 3:
-            image = gray2color(image)
+            image = gray2Color(image)
         boxes = []
         num_of_boxes = len(items) - 1
         assert num_of_boxes > 0
@@ -161,23 +161,23 @@ class DataHolder:
 
     def _decode(self, line):
         img, boxes = self._parse(line)
-        resized = letterbox_embed(img, self.input_size, self.input_size)
+        resized = letterboxEmbed(img, self.input_size, self.input_size)
         corrected = []
         for xmin, ymin, xmax, ymax, c in boxes:
             if xmax > xmin and ymax > ymin: # not padding data
-                xmin, ymin, xmax, ymax = correct_box_o2l(xmin, ymin, xmax, ymax, resized.shape[0], img.shape)
+                xmin, ymin, xmax, ymax = correctBoxO2L(xmin, ymin, xmax, ymax, resized.shape[0], img.shape)
                 if DataHolder.debug_mode:
                     Box(xmin, ymin, xmax, ymax).draw(resized, thickness=2)
             corrected.append([xmin, ymin, xmax, ymax, c])
         if DataHolder.debug_mode:
-            show_image(resized)
+            showImage(resized)
         label = np.stack(corrected)
         label = label[label[:, 4] != -1]
         hmap_shape = (self.hmap_size, self.hmap_size, self.num_classes)
-        hm, reg, wh, mask, idx = encode_label(label, self.max_boxes, hmap_shape, self.dsr)
+        hm, reg, wh, mask, idx = encodeLabel(label, self.max_boxes, hmap_shape, self.dsr)
         if self.channel_means:
-            resized = sub_means(resized, self.channel_means)
-        x = normalize_l1(resized, 255.0, 0, True)
+            resized = subMeans(resized, self.channel_means)
+        x = normalizeL1(resized, 255.0, 0, True)
         return x, hm, reg, wh, mask, idx
 
 
