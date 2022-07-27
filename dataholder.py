@@ -33,19 +33,6 @@ def encodeLabel(label, max_boxes, heatmap_shape, downsample_ratio):
     return hm, reg, wh, mask, idx
 
 
-def readFlipAugment(path):
-    image = readImage(path[:path.index(".flip")])
-    if ".flip-x." in path:
-        image = flipTo(image, 'x')
-    elif ".flip-y." in path:
-        image = flipTo(image, 'y')
-    elif ".flip-xy." in path:
-        image = flipTo(image, 'xy')
-    else:
-        raise ValueError(path)
-    return image
-
-
 class DataHolder:
     debug_mode = 0
     def __init__(self,
@@ -133,10 +120,7 @@ class DataHolder:
     def _parse(self, line):
         items = line.strip().split(" ")
         path = items[0]
-        if path.endswith(".augment") and ".flip" in path:
-            image = readFlipAugment(path)
-        else:
-            image = readImage(items[0])
+        image = readImage(path)
         if len(image.shape) != 3 or image.shape[-1] != 3:
             image = gray2Color(image)
         boxes = []
