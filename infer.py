@@ -3,8 +3,8 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
 from cnnkit.preprocess import subMeans, normalizeL1
-from bitcv import resizeTo, letterboxEmbed, letterboxEmbedOptimized
-from bitcv import readImageZh, putText, correctBoxL2O, Box
+from bitcv import resize_to, letter_box_embed, letter_box_embed_optimized
+from bitcv import read_image_zh, putText, transpose_letterbox_to_origin, Box
 from pymagic import logI, logF, Timer
 
 
@@ -146,7 +146,7 @@ class CenterNetInfer:
         self.colors = [(0,255,0),(255,0,0),(0,0,255),(240,240,0),(0,240,240),(240,0,240),(240,240,240)]
 
     def cropResize(self, mat):
-        return resizeTo(mat, self.conf.input_size, self.conf.input_size)
+        return resize_to(mat, self.conf.input_size, self.conf.input_size)
 
     def check(self, images: list):
         for img in images:
@@ -177,18 +177,18 @@ class CenterNetInfer:
 
     def inference(self, path, image=None):
         if image is None:
-            image = readImageZh(path)
+            image = read_image_zh(path)
         lettersize = max(image.shape[:2])
         if 0:
-            resized = letterboxEmbed(image, lettersize, lettersize)
+            resized = letter_box_embed(image, lettersize, lettersize)
         else:
-            resized = letterboxEmbedOptimized(image, lettersize)
+            resized = letter_box_embed_optimized(image, lettersize)
         detections = self._inference(resized)
         if detections is None:
             return
         boxes = detections[:, 0:4]
         for box in boxes:
-            xmin, ymin, xmax, ymax = correctBoxL2O(box[0], box[1], box[2], box[3], lettersize, image.shape[:2])
+            xmin, ymin, xmax, ymax = transpose_letterbox_to_origin(box[0], box[1], box[2], box[3], lettersize, image.shape[:2])
             xmin = max(xmin, 0)
             ymin = max(ymin, 0)
             xmax = min(xmax, image.shape[1]-1)

@@ -6,7 +6,7 @@ from cnnkit import printModelSummary, OptimizerFactory, loadWeightsFrom, saveMod
 from centernet.loss import CenterNetLoss
 from centernet.dataholder import DataHolder
 from centernet.network import createCenterNet, backboneFactory
-from pymagic import logI, printDict, isFile, redirectLoggingStream
+from pymagic import logI, print_dict, isFile, redirectLoggingStream
 from tqdm import tqdm
 
 
@@ -129,7 +129,7 @@ def trainCenterNet(conf, pretrained):
     printModelSummary(model, F"{conf.save_model_dir}/cn-{conf.backbone}")
 
     optimizer = OptimizerFactory(**conf.optimizer)
-    printDict(optimizer.get_config())
+    print_dict(optimizer.get_config())
 
     DataHolder.debug_mode = 0
     dataholder_train = DataHolder(train_list_files=conf.train_list_files,

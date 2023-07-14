@@ -5,8 +5,8 @@ import numpy as np
 from collections import defaultdict
 from cnnkit.preprocess import subMeans, normalizeL1
 from centernet.gauss import gaussianRadius, createGaussHeatmap
-from bitcv import Box, showImage, readImage, flipTo
-from bitcv import letterboxEmbed, correctBoxO2L, gray2Color
+from bitcv import Box, showImage, read_image, flip_to
+from bitcv import letter_box_embed, transpose_origin_to_letterbox, gray_to_color
 from pymagic import logW, logI
 
 
@@ -120,9 +120,9 @@ class DataHolder:
     def _parse(self, line):
         items = line.strip().split(" ")
         path = items[0]
-        image = readImage(path)
+        image = read_image(path)
         if len(image.shape) != 3 or image.shape[-1] != 3:
-            image = gray2Color(image)
+            image = gray_to_color(image)
         boxes = []
         num_of_boxes = len(items) - 1
         assert num_of_boxes > 0
@@ -145,11 +145,11 @@ class DataHolder:
 
     def _decode(self, line):
         img, boxes = self._parse(line)
-        resized = letterboxEmbed(img, self.input_size, self.input_size)
+        resized = letter_box_embed(img, self.input_size, self.input_size)
         corrected = []
         for xmin, ymin, xmax, ymax, c in boxes:
             if xmax > xmin and ymax > ymin: # not padding data
-                xmin, ymin, xmax, ymax = correctBoxO2L(xmin, ymin, xmax, ymax, resized.shape[0], img.shape)
+                xmin, ymin, xmax, ymax = transpose_origin_to_letterbox(xmin, ymin, xmax, ymax, resized.shape[0], img.shape)
                 if DataHolder.debug_mode:
                     Box(xmin, ymin, xmax, ymax).draw(resized, thickness=2)
             corrected.append([xmin, ymin, xmax, ymax, c])
