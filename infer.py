@@ -2,7 +2,7 @@
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
-from cnnkit.preprocess import subMeans, normalizeL1
+from tfcnnkit.preprocess import subMeans, normalizeL1
 from bitcv import resize_to, letter_box_embed, letter_box_embed_optimized
 from bitcv import read_image_zh, putText, transpose_letterbox_to_origin, Box
 from pymagic import logI, logF, Timer

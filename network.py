@@ -2,18 +2,18 @@
 import tensorflow as tf
 import tensorflow.keras as keras
 from typing import Union
-from cnnkit.backbones.darknet_tiny import cspDarkNet53Tiny
-from cnnkit.backbones.mobilenet_v2_tf import createMobileNetV2
-from cnnkit.backbones.mobilenet_v3_tf import createMobileNetV3
-from cnnkit.backbones.shufflenet_v2 import createShuffleNet
-from cnnkit.backbones.ghostnet import createGhostNet
-from cnnkit.backbones.efficientnet_v1 import createEfficientNetV1
-from cnnkit.backbones.efficientnet_v2 import createEfficientNetV2
-from cnnkit.backbones.efficientnet_lite import createEfficientNetLite
-from cnnkit.backbones.densenet import createDenseNet
-from cnnkit.backbones.resnet_xt import createResNetXT
-from cnnkit.extra import activeFunction
-from cnnkit.utils import LayerBlock
+from tfcnnkit.backbones.darknet_tiny import cspDarkNet53Tiny
+from tfcnnkit.backbones.mobilenet_v2_tf import createMobileNetV2
+from tfcnnkit.backbones.mobilenet_v3_tf import createMobileNetV3
+from tfcnnkit.backbones.shufflenet_v2 import createShuffleNet
+from tfcnnkit.backbones.ghostnet import createGhostNet
+from tfcnnkit.backbones.efficientnet_v1 import createEfficientNetV1
+from tfcnnkit.backbones.efficientnet_v2 import createEfficientNetV2
+from tfcnnkit.backbones.efficientnet_lite import createEfficientNetLite
+from tfcnnkit.backbones.densenet import createDenseNet
+from tfcnnkit.backbones.resnet_xt import createResNetXT
+from tfcnnkit.extra import activeFunction
+from tfcnnkit.utils import LayerBlock
 
 
 def backboneFactory(name: str,

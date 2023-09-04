@@ -3,7 +3,7 @@ import os, psutil
 import re
 import numpy as np
 from collections import defaultdict
-from cnnkit.preprocess import subMeans, normalizeL1
+from tfcnnkit.preprocess import subMeans, normalizeL1
 from centernet.gauss import gaussianRadius, createGaussHeatmap
 from bitcv import Box, showImage, read_image, flip_to
 from bitcv import letter_box_embed, transpose_origin_to_letterbox, gray_to_color

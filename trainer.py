@@ -2,7 +2,7 @@
 import os, psutil, re
 import tensorflow as tf
 import tensorflow.keras as keras
-from cnnkit import printModelSummary, OptimizerFactory, loadWeightsFrom, saveModelTo
+from tfcnnkit import printModelSummary, OptimizerFactory, loadWeightsFrom, saveModelTo
 from centernet.loss import CenterNetLoss
 from centernet.dataholder import DataHolder
 from centernet.network import createCenterNet, backboneFactory
