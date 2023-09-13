@@ -3,8 +3,8 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
 from tfcnnkit.preprocess import subMeans, normalizeL1
-from bitcv import resize_to, letter_box_embed, letter_box_embed_optimized
-from bitcv import read_image_zh, putText, transpose_letterbox_to_origin, Box
+from bitcv import resize_to, letterbox_embed, letterbox_embed_fast
+from bitcv import read_image_zh, putText, points_leave_letterbox, Box
 from pymagic import logI, logF, Timer
 
 
@@ -180,15 +180,15 @@ class CenterNetInfer:
             image = read_image_zh(path)
         lettersize = max(image.shape[:2])
         if 0:
-            resized = letter_box_embed(image, lettersize, lettersize)
+            resized = letterbox_embed(image, lettersize, lettersize)
         else:
-            resized = letter_box_embed_optimized(image, lettersize)
+            resized = letterbox_embed_fast(image, lettersize)
         detections = self._inference(resized)
         if detections is None:
             return
         boxes = detections[:, 0:4]
         for box in boxes:
-            xmin, ymin, xmax, ymax = transpose_letterbox_to_origin(box[0], box[1], box[2], box[3], lettersize, image.shape[:2])
+            xmin, ymin, xmax, ymax = points_leave_letterbox(box[0], box[1], box[2], box[3], lettersize, image.shape[:2])
             xmin = max(xmin, 0)
             ymin = max(ymin, 0)
             xmax = min(xmax, image.shape[1]-1)

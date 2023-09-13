@@ -6,7 +6,7 @@ from collections import defaultdict
 from tfcnnkit.preprocess import subMeans, normalizeL1
 from centernet.gauss import gaussianRadius, createGaussHeatmap
 from bitcv import Box, showImage, read_image, flip_to
-from bitcv import letter_box_embed, transpose_origin_to_letterbox, gray_to_color
+from bitcv import letterbox_embed, points_enter_letterbox, gray_to_color
 from pymagic import logW, logI
 
 
@@ -145,11 +145,11 @@ class DataHolder:
 
     def _decode(self, line):
         img, boxes = self._parse(line)
-        resized = letter_box_embed(img, self.input_size, self.input_size)
+        resized = letterbox_embed(img, self.input_size, self.input_size)
         corrected = []
         for xmin, ymin, xmax, ymax, c in boxes:
             if xmax > xmin and ymax > ymin: # not padding data
-                xmin, ymin, xmax, ymax = transpose_origin_to_letterbox(xmin, ymin, xmax, ymax, resized.shape[0], img.shape)
+                xmin, ymin, xmax, ymax = points_enter_letterbox(xmin, ymin, xmax, ymax, resized.shape[0], img.shape)
                 if DataHolder.debug_mode:
                     Box(xmin, ymin, xmax, ymax).draw(resized, thickness=2)
             corrected.append([xmin, ymin, xmax, ymax, c])
