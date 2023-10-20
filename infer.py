@@ -5,7 +5,7 @@ import tensorflow.keras as keras
 from tfcnnkit.preprocess import subMeans, normalizeL1
 from bitcv import resize_to, letterbox_embed, letterbox_embed_fast
 from bitcv import read_image_zh, putText, points_leave_letterbox, Box
-from pymagic import logI, logF, Timer
+from pymagic import logger, Timer
 
 
 def poolNMS(heatmap, pool_size=3):
@@ -172,7 +172,7 @@ class CenterNetInfer:
             pred = self.model.predict(x, batch_size=1)
         detections = self.decode(image, pred)
         detections = numpyNMS(detections, self.conf.nms_threshold)
-        logI("Elapsed: %.4f" % timer.seconds())
+        logger.info("Elapsed: %.4f" % timer.seconds())
         return detections
 
     def inference(self, path, image=None):

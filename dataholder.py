@@ -5,9 +5,9 @@ import numpy as np
 from collections import defaultdict
 from tfcnnkit.preprocess import subMeans, normalizeL1
 from centernet.gauss import gaussianRadius, createGaussHeatmap
-from bitcv import Box, showImage, read_image, flip_to
+from bitcv import Box, showImage, read_image
 from bitcv import letterbox_embed, points_enter_letterbox, gray_to_color
-from pymagic import logW, logI
+from pymagic import logger
 
 
 def encodeLabel(label, max_boxes, heatmap_shape, downsample_ratio):
@@ -67,7 +67,7 @@ class DataHolder:
         for line in self.annotations:
             for label in regex.findall(line):
                 counter[label] += 1
-        logI("Labels:", dict(counter))
+        logger.info(F"Labels: {dict(counter)}")
         self._x = None
 
     def cache(self):
@@ -81,7 +81,7 @@ class DataHolder:
         for i, line in enumerate(self.annotations):
             if i and (i % 100 == 0):
                 rss = psutil.Process(os.getpid()).memory_info().rss / (1024**3)
-                logI(F"{i} images loaded, {round(rss, 2)}GB memory used")
+                logger.info(F"{i} images loaded, {round(rss, 2)}GB memory used")
             x, hm, reg, wh, mask, idx = self._decode(line)
             self._x[i] = x
             self._hmaps[i] = hm
@@ -90,7 +90,7 @@ class DataHolder:
             self._masks[i] = mask
             self._indices[i] = idx
         rss = psutil.Process(os.getpid()).memory_info().rss / (1024**3)
-        logI(F"{i} images loaded, {round(rss, 2)}GB memory used")
+        logger.info(F"{i} images loaded, {round(rss, 2)}GB memory used")
         return self
 
     def generateOne(self):
@@ -135,7 +135,7 @@ class DataHolder:
                 assert xmax > 0 and ymax > 0
                 boxes.append([xmin, ymin, xmax, ymax, category])
             else:
-                # logW(F"Found more than {self.max_boxes} boxes({len(items)-1}): {items[0]}")
+                # logger.warn(F"Found more than {self.max_boxes} boxes({len(items)-1}): {items[0]}")
                 break
         num_padding = self.max_boxes - num_of_boxes
         if num_padding > 0:

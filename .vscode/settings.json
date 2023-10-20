@@ -1,7 +1,14 @@
 {
     "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportMissingImports": "none",
+        "reportUnboundVariable": "warning",
+        "reportUnusedImport": "information", 
+        "reportOptionalSubscript": "none",
+        "reportOptionalIterable": "none"
+    },
     "python.analysis.extraPaths": [
         "currentProject"
     ],
-    "workbench.colorTheme": "Kimbie Dark"
+    "workbench.colorTheme": "Base16 Dark Monokai"
 }

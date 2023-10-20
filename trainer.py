@@ -6,7 +6,7 @@ from tfcnnkit import printModelSummary, OptimizerFactory, loadWeightsFrom, saveM
 from centernet.loss import CenterNetLoss
 from centernet.dataholder import DataHolder
 from centernet.network import createCenterNet, backboneFactory
-from pymagic import logI, print_dict, isFile, redirectLoggingStream
+from pymagic import logger, print_dict, isFile, redirectLoggingStream
 from tqdm import tqdm
 
 
@@ -108,7 +108,7 @@ class CenterNetTrainer:
             # save model
             train_loss = mean_train_loss.result().numpy()
             valid_loss = mean_valid_loss.result().numpy()
-            logI("Epoch-%d final: train_loss=%.4f valid_loss=%.4f" % (epoch, train_loss, valid_loss))
+            logger.info("Epoch-%d final: train_loss=%.4f valid_loss=%.4f" % (epoch, train_loss, valid_loss))
             name = "%s-G%02d(%.4f_%.4f).h5" % (save_name_prefix, epoch+self.startG, train_loss, valid_loss)
             saveModelTo(self.model, path=F"{save_model_dir}/{name}", include_optimizer=False, only_weights=False)
 
@@ -145,7 +145,7 @@ def trainCenterNet(conf, pretrained):
                                   max_boxes=conf.max_boxes).cache()
 
     rss = psutil.Process(os.getpid()).memory_info().rss / (1024**3)
-    logI(F"{round(rss, 2)}GB memory used")
+    logger.info(F"{round(rss, 2)}GB memory used")
 
     save_name_prefix = "cn-" + conf.backbone
 
