@@ -3,12 +3,20 @@
     "python.analysis.diagnosticSeverityOverrides": {
         "reportMissingImports": "none",
         "reportUnboundVariable": "warning",
-        "reportUnusedImport": "information", 
+        "reportUnusedImport": "information",
         "reportOptionalSubscript": "none",
         "reportOptionalIterable": "none"
     },
     "python.analysis.extraPaths": [
         "currentProject"
+    ],
+    "[python]": {
+        "editor.formatOnType": true,
+        "editor.defaultFormatter": "ms-python.python"
+    },
+    "python.formatting.provider": "yapf",
+    "python.formatting.yapfArgs": [
+        "--style={column_limit=99}"
     ],
     "workbench.colorTheme": "Base16 Dark Monokai"
 }

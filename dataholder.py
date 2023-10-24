@@ -3,9 +3,9 @@ import os, psutil
 import re
 import numpy as np
 from collections import defaultdict
-from tfcnnkit.preprocess import subMeans, normalizeL1
+from tfcnnkit.preprocess import sub_means, normalize_l1
 from centernet.gauss import gaussianRadius, createGaussHeatmap
-from bitcv import Box, showImage, read_image
+from bitcv import Box, show_image, read_image
 from bitcv import letterbox_embed, points_enter_letterbox, gray_to_color
 from pymagic import logger
 
@@ -160,8 +160,6 @@ class DataHolder:
         hmap_shape = (self.hmap_size, self.hmap_size, self.num_classes)
         hm, reg, wh, mask, idx = encodeLabel(label, self.max_boxes, hmap_shape, self.dsr)
         if self.channel_means:
-            resized = subMeans(resized, self.channel_means)
-        x = normalizeL1(resized, 255.0, 0, True)
+            resized = sub_means(resized, self.channel_means)
+        x = normalize_l1(resized, 255.0, 0, True)
         return x, hm, reg, wh, mask, idx
-
-

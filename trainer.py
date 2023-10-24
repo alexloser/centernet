@@ -2,11 +2,11 @@
 import os, psutil, re
 import tensorflow as tf
 import tensorflow.keras as keras
-from tfcnnkit import printModelSummary, OptimizerFactory, loadWeightsFrom, saveModelTo
+from tfcnnkit import print_model_summary, optimizer_factory, save_model_to, load_weights_from
 from centernet.loss import CenterNetLoss
 from centernet.dataholder import DataHolder
 from centernet.network import createCenterNet, backboneFactory
-from pymagic import logger, print_dict, isFile, redirectLoggingStream
+from pymagic import logger, print_dict, is_file
 from tqdm import tqdm
 
 
@@ -32,8 +32,8 @@ class CenterNetTrainer:
     def __init__(self, config, model: keras.Model, optimizer, pretrained):
         super().__init__()
         self.model = model
-        if pretrained and isFile(pretrained):
-            loadWeightsFrom(self.model, pretrained)
+        if pretrained and is_file(pretrained):
+            load_weights_from(self.model, pretrained)
         self.model.compile(optimizer)
         self.optimizer = optimizer
         self.batch_size = config.batch_size
@@ -58,8 +58,6 @@ class CenterNetTrainer:
         return gen_train, gen_valid
 
     def run(self, max_epoches, dataholder_train, dataholder_valid, save_model_dir, save_name_prefix):
-        redirectLoggingStream(F"{save_model_dir}/training.log", mode="w")
-        
         for epoch in range(1, max_epoches + 1):
             mean_hmap_loss = keras.metrics.Mean()
             mean_reg_loss = keras.metrics.Mean()
@@ -110,7 +108,7 @@ class CenterNetTrainer:
             valid_loss = mean_valid_loss.result().numpy()
             logger.info("Epoch-%d final: train_loss=%.4f valid_loss=%.4f" % (epoch, train_loss, valid_loss))
             name = "%s-G%02d(%.4f_%.4f).h5" % (save_name_prefix, epoch+self.startG, train_loss, valid_loss)
-            saveModelTo(self.model, path=F"{save_model_dir}/{name}", include_optimizer=False, only_weights=False)
+            save_model_to(self.model, path=F"{save_model_dir}/{name}", include_optimizer=False, only_weights=False)
 
 
 
@@ -126,9 +124,9 @@ def trainCenterNet(conf, pretrained):
                             head_channels=conf.head_channels,
                             act_type=conf.act_type)
 
-    printModelSummary(model, F"{conf.save_model_dir}/cn-{conf.backbone}")
+    print_model_summary(model, F"{conf.save_model_dir}/cn-{conf.backbone}")
 
-    optimizer = OptimizerFactory(**conf.optimizer)
+    optimizer = optimizer_factory(**conf.optimizer)
     print_dict(optimizer.get_config())
 
     DataHolder.debug_mode = 0
