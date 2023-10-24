@@ -5,7 +5,7 @@ import numpy as np
 from collections import defaultdict
 from tfcnnkit.preprocess import sub_means, normalize_l1
 from centernet.gauss import gaussianRadius, createGaussHeatmap
-from bitcv import Box, show_image, read_image
+from bitcv import Box, read_image
 from bitcv import letterbox_embed, points_enter_letterbox, gray_to_color
 from pymagic import logger
 
