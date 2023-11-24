@@ -13,10 +13,9 @@ from tfcnnkit.extra import active_function
 from tfcnnkit.utils import LayerBlock
 
 
-def backboneFactory(name: str,  
-                    input_shape: Union[list, tuple, int],
-                    batch_size: int = None,
-                    **kwargs) -> keras.Model:
+def backboneFactory(
+    name: str, input_shape: Union[list, tuple, int], batch_size: int = None, **kwargs
+) -> keras.Model:
     if isinstance(input_shape, int):
         input_shape = (input_shape, input_shape, 3)
     name = name.lower()
@@ -33,17 +32,21 @@ def backboneFactory(name: str,
     if "efficient" in name and "v2" in name:
         return create_efficientnet_v2(input_shape, batch_size=batch_size, num_classes=0, **kwargs)
     if "efficient" in name and "lite" in name:
-        return create_efficient_net_lite(input_shape, batch_size=batch_size, num_classes=0, **kwargs)
+        return create_efficient_net_lite(
+            input_shape, batch_size=batch_size, num_classes=0, **kwargs
+        )
     raise NotImplementedError(name)
 
 
-def createCenterNet(backbone: keras.Model,
-                    input_shape: Union[list, tuple],
-                    num_classes: int,
-                    deconv_filters: list = [128, 128, 128],
-                    head_channels: int = 64,
-                    batch_size: int = None,
-                    act_type: str = "swish") -> keras.Model:
+def createCenterNet(
+    backbone: keras.Model,
+    input_shape: Union[list, tuple],
+    num_classes: int,
+    deconv_filters: list = [128, 128, 128],
+    head_channels: int = 64,
+    batch_size: int = None,
+    act_type: str = "swish",
+) -> keras.Model:
     inputs = keras.layers.Input(shape=input_shape, batch_size=batch_size)
     x = backbone(inputs)
 
@@ -52,63 +55,85 @@ def createCenterNet(backbone: keras.Model,
 
     upsamples = LayerBlock()
     for i in range(3):
-        upsamples.layers.extend([
-            keras.layers.Conv2DTranspose(filters=deconv_filters[i],
-                                         kernel_size=4,
-                                         strides=2,
-                                         padding="same",
-                                         kernel_initializer=keras.initializers.he_normal(),
-                                         use_bias=False,
-                                         name=F"deconv_{i+1}"),
-            keras.layers.BatchNormalization(),
-            active_function(act_type)
-        ])
-    
+        upsamples.layers.extend(
+            [
+                keras.layers.Conv2DTranspose(
+                    filters=deconv_filters[i],
+                    kernel_size=4,
+                    strides=2,
+                    padding="same",
+                    kernel_initializer=keras.initializers.he_normal(),
+                    use_bias=False,
+                    name=f"deconv_{i+1}",
+                ),
+                keras.layers.BatchNormalization(),
+                active_function(act_type),
+            ]
+        )
+
     x = upsamples.forward(x)
 
-    hmap_head = LayerBlock([
-        tf.keras.layers.Conv2D(filters=head_channels,
-                               kernel_size=(3, 3),
-                               strides=1,
-                               padding="same",
-                               kernel_initializer=keras.initializers.he_normal()),
-        active_function(act_type),
-        tf.keras.layers.Conv2D(filters=num_classes,
-                               kernel_size=(1, 1),
-                               strides=1,
-                               padding="same",
-                               kernel_initializer=keras.initializers.he_normal())
-    ])
+    hmap_head = LayerBlock(
+        [
+            tf.keras.layers.Conv2D(
+                filters=head_channels,
+                kernel_size=(3, 3),
+                strides=1,
+                padding="same",
+                kernel_initializer=keras.initializers.he_normal(),
+            ),
+            active_function(act_type),
+            tf.keras.layers.Conv2D(
+                filters=num_classes,
+                kernel_size=(1, 1),
+                strides=1,
+                padding="same",
+                kernel_initializer=keras.initializers.he_normal(),
+            ),
+        ]
+    )
     y1 = hmap_head.forward(x)
 
-    reg_head = LayerBlock([
-        tf.keras.layers.Conv2D(filters=head_channels,
-                               kernel_size=(3, 3),
-                               strides=1,
-                               padding="same",
-                               kernel_initializer=keras.initializers.he_normal()),
-        active_function(act_type),
-        tf.keras.layers.Conv2D(filters=2,
-                               kernel_size=(1, 1),
-                               strides=1,
-                               padding="same",
-                               kernel_initializer=keras.initializers.he_normal())
-    ])
+    reg_head = LayerBlock(
+        [
+            tf.keras.layers.Conv2D(
+                filters=head_channels,
+                kernel_size=(3, 3),
+                strides=1,
+                padding="same",
+                kernel_initializer=keras.initializers.he_normal(),
+            ),
+            active_function(act_type),
+            tf.keras.layers.Conv2D(
+                filters=2,
+                kernel_size=(1, 1),
+                strides=1,
+                padding="same",
+                kernel_initializer=keras.initializers.he_normal(),
+            ),
+        ]
+    )
     y2 = reg_head.forward(x)
 
-    size_head = LayerBlock([
-        tf.keras.layers.Conv2D(filters=head_channels,
-                               kernel_size=(3, 3),
-                               strides=1,
-                               padding="same",
-                               kernel_initializer=keras.initializers.he_normal()),
-        active_function(act_type),
-        tf.keras.layers.Conv2D(filters=2,
-                               kernel_size=(1, 1),
-                               strides=1,
-                               padding="same",
-                               kernel_initializer=keras.initializers.he_normal())
-    ])
+    size_head = LayerBlock(
+        [
+            tf.keras.layers.Conv2D(
+                filters=head_channels,
+                kernel_size=(3, 3),
+                strides=1,
+                padding="same",
+                kernel_initializer=keras.initializers.he_normal(),
+            ),
+            active_function(act_type),
+            tf.keras.layers.Conv2D(
+                filters=2,
+                kernel_size=(1, 1),
+                strides=1,
+                padding="same",
+                kernel_initializer=keras.initializers.he_normal(),
+            ),
+        ]
+    )
     y3 = size_head.forward(x)
 
     y = tf.concat([y1, y2, y3], axis=-1)
@@ -116,5 +141,3 @@ def createCenterNet(backbone: keras.Model,
     model = keras.models.Model(inputs=inputs, outputs=y)
 
     return model
-
-

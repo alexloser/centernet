@@ -4,7 +4,7 @@ import tensorflow as tf
 import tensorflow.keras as keras
 from tfcnnkit.preprocess import sub_means, normalize_l1
 from bitcv import resize_to, letterbox_embed, letterbox_embed_fast
-from bitcv import read_image_zh, putText, points_leave_letterbox, Box
+from bitcv import read_image_zh, putText, escape_from_letter, Box
 from pymagic import logger, Timer
 
 
@@ -22,7 +22,8 @@ def calcIOU(b1, b2):
     inter_rect_x2 = np.minimum(b1_x2, b2_x2)
     inter_rect_y2 = np.minimum(b1_y2, b2_y2)
     inter_area = np.maximum(inter_rect_x2 - inter_rect_x1, 0) * np.maximum(
-        inter_rect_y2 - inter_rect_y1, 0)
+        inter_rect_y2 - inter_rect_y1, 0
+    )
     area_b1 = (b1_x2 - b1_x1) * (b1_y2 - b1_y1)
     area_b2 = (b2_x2 - b2_x1) * (b2_y2 - b2_y1)
     return inter_area / np.maximum((area_b1 + area_b2 - inter_area), 1e-6)
@@ -52,7 +53,6 @@ def numpyNMS(detections, threhold):
 
 
 class CenterNetDecoder:
-
     def __init__(self, input_shape, max_boxes, score_threshold, nms_threshold=0):
         self.K = max_boxes
         self.input_shape = np.array(input_shape, dtype=np.float32)[:2]
@@ -89,8 +89,10 @@ class CenterNetDecoder:
         scores = tf.reshape(scores, (batch_size, self.K, 1))
 
         values = [
-            xs - size[..., 0:1] / 2, ys - size[..., 1:2] / 2, xs + size[..., 0:1] / 2,
-            ys + size[..., 1:2] / 2
+            xs - size[..., 0:1] / 2,
+            ys - size[..., 1:2] / 2,
+            xs + size[..., 0:1] / 2,
+            ys + size[..., 1:2] / 2,
         ]
 
         bboxes = tf.concat(values=values, axis=2)
@@ -131,7 +133,6 @@ class CenterNetDecoder:
 
 
 class CenterNetInfer:
-
     def __init__(self, model: keras.Model, config):
         self.model = model
         self.conf = config
@@ -140,12 +141,21 @@ class CenterNetInfer:
             output_details = self.model.get_output_details()
             self.output_tendor_id = int(output_details[0]["index"])
             self.input_tendor_id = int(self.model.get_input_details()[0]["index"])
-        self.decode = CenterNetDecoder(input_shape=self.conf.input_shape,
-                                       max_boxes=self.conf.max_boxes,
-                                       score_threshold=self.conf.score_threshold,
-                                       nms_threshold=self.conf.nms_threshold)
-        self.colors = [(0, 255, 0), (255, 0, 0), (0, 0, 255), (240, 240, 0), (0, 240, 240),
-                       (240, 0, 240), (240, 240, 240)]
+        self.decode = CenterNetDecoder(
+            input_shape=self.conf.input_shape,
+            max_boxes=self.conf.max_boxes,
+            score_threshold=self.conf.score_threshold,
+            nms_threshold=self.conf.nms_threshold,
+        )
+        self.colors = [
+            (0, 255, 0),
+            (255, 0, 0),
+            (0, 0, 255),
+            (240, 240, 0),
+            (0, 240, 240),
+            (240, 0, 240),
+            (240, 240, 240),
+        ]
 
     def cropResize(self, mat):
         return resize_to(mat, self.conf.input_size, self.conf.input_size)
@@ -153,9 +163,9 @@ class CenterNetInfer:
     def check(self, images: list):
         for img in images:
             if img.shape[0] < self.conf.min_size[0] or img.shape[1] < self.conf.min_size[1]:
-                raise ValueError(F"Wrong image shape: {img.shape}")
+                raise ValueError(f"Wrong image shape: {img.shape}")
             if img.shape[0] > img.shape[1]:
-                raise ValueError(F"Wrong image shape: {img.shape}")
+                raise ValueError(f"Wrong image shape: {img.shape}")
 
     def preprocess(self, image) -> np.ndarray:
         x = np.array([self.cropResize(image)], dtype=np.float32)
@@ -190,8 +200,8 @@ class CenterNetInfer:
             return
         boxes = detections[:, 0:4]
         for box in boxes:
-            xmin, ymin, xmax, ymax = points_leave_letterbox(box[0], box[1], box[2], box[3],
-                                                            lettersize, image.shape[:2])
+            points = (box[0], box[1]), (box[2], box[3])
+            (xmin, ymin), (xmax, ymax) = escape_from_letter(points, lettersize, image.shape[:2])
             xmin = max(xmin, 0)
             ymin = max(ymin, 0)
             xmax = min(xmax, image.shape[1] - 1)
@@ -211,7 +221,8 @@ class CenterNetInfer:
             color = self.colors[i % len(self.colors)]
             box = boxes[i]
             Box(int(box[0]), int(box[1]), int(box[2]), int(box[3])).draw(labeled, color, 2)
-            putText(labeled, ("%d" % int(classes[i])), (int(box[0]) + 2, int(box[1]) + 12), color,
-                    1, 1)
+            putText(
+                labeled, ("%d" % int(classes[i])), (int(box[0]) + 2, int(box[1]) + 12), color, 1, 1
+            )
             putText(labeled, ("%.2f" % scores[i]), (int(box[0]) + 2, int(box[3]) - 3), color, 1, 1)
         return labeled

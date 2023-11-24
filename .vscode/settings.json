@@ -2,21 +2,18 @@
     "python.analysis.typeCheckingMode": "basic",
     "python.analysis.diagnosticSeverityOverrides": {
         "reportMissingImports": "none",
+        "reportUnusedImport": "none",
         "reportUnboundVariable": "warning",
-        "reportUnusedImport": "information",
+        "reportUndefinedVariable": "warning", 
         "reportOptionalSubscript": "none",
-        "reportOptionalIterable": "none"
+        "reportOptionalIterable": "none",
+        "reportOptionalCall": "warning"
     },
     "python.analysis.extraPaths": [
         "currentProject"
     ],
-    "[python]": {
-        "editor.formatOnType": true,
-        "editor.defaultFormatter": "ms-python.python"
-    },
-    "python.formatting.provider": "yapf",
-    "python.formatting.yapfArgs": [
-        "--style={column_limit=99}"
+    "black-formatter.args": [
+        "--line-length=100"
     ],
-    "workbench.colorTheme": "Base16 Dark Monokai"
+    "files.eol": "\n"
 }
