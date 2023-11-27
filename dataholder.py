@@ -76,8 +76,8 @@ class DataHolder:
         self._x = np.zeros((n, self.input_size, self.input_size, 3), np.float32)
         for i, line in enumerate(self.annotations):
             if i and (i % 100 == 0):
-                rss = psutil.Process(os.getpid()).memory_info().rss / (1024**3)
-                logger.info(f"{i} images loaded, {round(rss, 2)}GB memory used")
+                uss = psutil.Process(os.getpid()).memory_full_info().uss / (1024**3)
+                logger.info(f"{i} images loaded, {round(uss, 2)}GB memory used")
             x, hm, reg, wh, mask, idx = self._decode(line)
             self._x[i] = x
             self._hmaps[i] = hm
@@ -85,8 +85,8 @@ class DataHolder:
             self._sizes[i] = wh
             self._masks[i] = mask
             self._indices[i] = idx
-        rss = psutil.Process(os.getpid()).memory_info().rss / (1024**3)
-        logger.info(f"{i} images loaded, {round(rss, 2)}GB memory used")
+        uss = psutil.Process(os.getpid()).memory_full_info().uss / (1024**3)
+        logger.info(f"{i} images loaded, {round(uss, 2)}GB memory used")
         return self
 
     def generateOne(self):

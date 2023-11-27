@@ -180,8 +180,8 @@ def trainCenterNet(conf, pretrained):
         max_boxes=conf.max_boxes,
     ).cache()
 
-    rss = psutil.Process(os.getpid()).memory_info().rss / (1024**3)
-    logger.info(f"{round(rss, 2)}GB memory used")
+    uss = psutil.Process(os.getpid()).memory_full_info().uss / (1024**3)
+    logger.info(f"{round(uss, 2)}GB memory used")
 
     save_name_prefix = "cn-" + conf.backbone
 
