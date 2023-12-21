@@ -14,7 +14,7 @@
     "[python]": {
         "editor.formatOnSave": false,
         "editor.formatOnType": false,
-        "editor.defaultFormatter": "eeyore.yapf",
+        "editor.defaultFormatter": "ms-python.black-formatter"  // "eeyore.yapf"
     },
     "yapf.args": [
         "--style",
